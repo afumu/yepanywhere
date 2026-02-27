@@ -13,11 +13,11 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <p>I've been on a similar tear, just with more constraints. I left Atlassian in early 2025, moved my family from San Francisco to Zurich, and once we settled in I went heads-down on my own projects. Since November 19th I've made 4,092 contributions across 18 repos in 101 days &mdash; about 40 per day, with a 99% active-day rate. My peak day was 135 contributions. I'm doing this while raising a 6-year-old and a 1-year-old.</p>
 
-  <p>This isn't a comparison post. Steinberger has more parallelism, more hours, no kids, and deep founder experience from building PSPDFKit. He deserves the attention he gets. This is about what I learned from watching him work publicly, and how it changed my own approach.</p>
+  <p>This is about what I learned from watching him work publicly, and how it changed my own approach.</p>
 
   <h2>Take Codex seriously</h2>
 
-  <p>This is the biggest one. I was fully Claude-pilled. Claude Code is incredible for interactive, architectural work &mdash; multi-file refactors, building UIs, reasoning about complex systems. I thought that was the whole game.</p>
+  <p>This is the biggest one. I was fully Claude-pilled. I liked the conversational feel &mdash; Claude has a very user-friendly default personality, it suggests next steps, it feels like working with someone rather than issuing commands. I hadn't bothered to look beyond it.</p>
 
   <p>Steinberger kept saying: Codex just works. Claude jumps in and starts doing stuff and says it's done without even reading the codebase. Codex is more thorough. It reads the code first.</p>
 
@@ -29,9 +29,11 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
     <li><strong>Thoroughness</strong> &mdash; it reads more of the codebase before acting. Claude's eagerness is a feature until it isn't.</li>
   </ul>
 
-  <p>Honestly, I started using Codex because I hit my $200/month Claude token limit and was forced to try something else. That's usually how I end up adopting new tools &mdash; not through careful evaluation, but because I'm blocked and need to keep moving. Turns out that's a pretty good way to discover that the tool you thought was best isn't always best.</p>
+  <p>Honestly, I started using Codex because I hit my $200/month Claude token limit and was forced to try something else.</p>
 
-  <p>Now I pick the model based on the task. Claude for interactive architecture and UI work, Codex for backend and test-heavy tasks. The right answer was never "one model for everything."</p>
+  <p>Codex out of the box is very dry &mdash; it does the task and stops. The single most useful customization I made was telling it to suggest something logical to do after completing a task. That immediately made it feel way more usable. Claude does this by default, which is probably why I stuck with it for so long.</p>
+
+  <p>Now I pick the model based on the task. Claude for conversational, exploratory work where I'm thinking out loud. Codex for backend, tests, and anything where I want it to actually read the codebase first.</p>
 
   <h2>Prompt requests, not pull requests</h2>
 
@@ -39,23 +41,17 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
 
   <p>When someone sends a PR, you can usually see immediately that you would never do this yourself. They're changing stuff they shouldn't, adding weird markdown files, making choices that don't fit the project's direction. It's not that you'd spend a long time reviewing &mdash; it's that the PR is obviously wrong because the contributor doesn't know the constraints that live in your head, the things that aren't encoded in the codebase.</p>
 
-  <p>But a prompt? You can run it yourself, with your context, steering the agent toward the right solution. The code is reproducible. The judgment about what the code should do isn't.</p>
-
-  <p>I've always been reluctant to accept PRs on my projects. I'll accept very small ones, but anything substantial &mdash; I'd rather understand the problem and solve it myself. This framing finally gave me the words for why.</p>
+  <p>But a prompt? You can run it yourself, with your context. The code is reproducible. The judgment about what the code should do isn't.</p>
 
   <h2>The phone as a forcing function</h2>
 
   <p>Steinberger popularized the "control your agents from Telegram" workflow. I built a whole product around the same idea &mdash; <a href="https://github.com/kzahel/yepanywhere">Yep Anywhere</a> lets me supervise Claude Code and Codex sessions from my phone.</p>
 
-  <p>I never would have prioritized mobile access if I could just sit at my desk all day. Obviously you're more productive at your desk &mdash; you can manually test things, open devtools, eyeball layouts. But when all you have is your phone and you still want to move forward, you end up prioritizing differently. You focus on hardening &mdash; writing integration tests, end-to-end tests, things you wouldn't normally reach for first. Because you can't verify anything by hand, you write tests that verify it for you.</p>
-
-  <p>The constraint of phone-only time doesn't make you a better engineer exactly, but it drives how you prioritize what gets implemented. Sometimes the best thing you can do from your phone is make the codebase more robust, even if that's not what you'd choose to work on at your desk.</p>
+  <p>I never would have prioritized mobile access if I could just sit at my desk all day. Desktop is more productive simply because you can have more things on screen at once. But on your phone, you can't get lazy and skip ahead to manually test &mdash; so you invest in the agent's ability to verify its own work. Tests become the priority because they're the only option.</p>
 
   <h2>Meta-tooling compounds</h2>
 
   <p>Every time Steinberger hit a limitation with AI agents, he built a tool to fix it. Agents can't see the screen? Build Peekaboo. Agents stuck in loops? Build Oracle. Need to message from agents? Build CLIs for iMessage, WhatsApp, Gmail.</p>
-
-  <p>I did the same thing independently. My assistant framework has browser automation, email, Telegram, Reddit scraping &mdash; all as skills that agents can use. The pattern is the same: don't work around agent limitations, build tools that extend them.</p>
 
   <p>This compounds. Every tool you build makes the next task easier, which means you build more things, which means more tools. It's a flywheel.</p>
 
@@ -71,9 +67,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
     <li><strong>Come back</strong>, review the diffs, commit the work.</li>
   </ol>
 
-  <p>I'll run 2&ndash;5 sessions concurrently. I'm always on the main branch &mdash; no worktrees, no feature branches. If two tasks might touch the same code, I just sequence them. Simple.</p>
-
-  <p>The key difference from Steinberger's approach: I'm always hands-on. I don't give a spec and come back in 2 hours. My sessions are short &mdash; a prompt, 10&ndash;20 minutes of execution, sometimes up to an hour for long test runs. I'm watching diffs, steering, clarifying. The agent doesn't have my full mental model, so I feed it context in real-time.</p>
+  <p>I'll run 2&ndash;5 sessions concurrently. I'm always on the main branch &mdash; no worktrees, no feature branches. If two tasks might touch the same code, I just sequence them. Sessions are short &mdash; a prompt, 10&ndash;20 minutes of execution, sometimes up to an hour for long test runs.</p>
 
   <h2>The numbers in context</h2>
 
@@ -119,9 +113,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
     </tbody>
   </table>
 
-  <p>He's at about 3x my throughput. The gap is mostly hours &mdash; he's presumably full-time with no interruptions, I'm interleaving with parenting. And he runs more concurrent agents with longer unsupervised runs.</p>
-
-  <p>Per hour of engaged attention, I think we're close. But he deserves credit for going wider and being more aggressive with parallelism. And crucially, for sharing all of this publicly so people like me could learn from it.</p>
+  <p>The point of the table isn't to make it a race. It's that 118 commits/day sounds superhuman until you see the inputs &mdash; more concurrent agents, more hours, no kids. The workflow itself isn't magic. It's accessible to anyone willing to learn it.</p>
 
   <h2>Who can do this</h2>
 
@@ -134,7 +126,7 @@ import ArticleLayout from "../layouts/ArticleLayout.astro";
     <li><strong>Genuine obsession</strong> &mdash; I basically do nothing else besides code and spend time with my family</li>
   </ul>
 
-  <p>Steinberger has all of these from his PSPDFKit background. I have them from 15 years of full-stack work and some investments. Most developers have one or two of these, not all four. That's why the people doing this intensely are a small group.</p>
+  <p>Most developers have one or two of these, not all four.</p>
 
   <h2>What I'm building</h2>
 
