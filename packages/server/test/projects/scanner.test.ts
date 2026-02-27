@@ -27,6 +27,46 @@ async function createClaudeProject(
   return join(host, encodedPath).replace(/\\/g, "/");
 }
 
+describe("ProjectScanner missing projectsDir", () => {
+  const tempDirs: string[] = [];
+
+  afterEach(async () => {
+    await Promise.all(
+      tempDirs
+        .splice(0)
+        .map((dir) => rm(dir, { recursive: true, force: true })),
+    );
+  });
+
+  it("still discovers Codex sessions when ~/.claude/projects is missing", async () => {
+    const nonExistentDir = join(
+      tmpdir(),
+      `project-scanner-missing-${randomUUID()}`,
+    );
+    // Don't create it — it should not exist
+
+    const codexDir = join(tmpdir(), `codex-sessions-${randomUUID()}`);
+    tempDirs.push(codexDir);
+    await mkdir(codexDir, { recursive: true });
+    await writeFile(
+      join(codexDir, "rollout-test.jsonl"),
+      `{"type":"session_meta","payload":{"id":"test-session","cwd":"/home/user/codex-project","timestamp":"2025-01-01T00:00:00Z"}}\n`,
+    );
+
+    const scanner = new ProjectScanner({
+      projectsDir: nonExistentDir,
+      codexSessionsDir: codexDir,
+      enableCodex: true,
+      enableGemini: false,
+    });
+
+    const projects = await scanner.listProjects();
+    // Should find at least the Codex session (possibly plus a home fallback)
+    const codexProjects = projects.filter((p) => p.provider === "codex");
+    expect(codexProjects.length).toBeGreaterThanOrEqual(1);
+  });
+});
+
 describe("ProjectScanner cache", () => {
   const tempDirs: string[] = [];
 

@@ -41,7 +41,7 @@ describe("Projects API", () => {
       expect(Array.isArray(json.projects)).toBe(true);
     });
 
-    it("returns empty list when no projects directory", async () => {
+    it("returns no Claude projects when projects directory is missing", async () => {
       const { app } = createApp({
         sdk: mockSdk,
         projectsDir: "/nonexistent/path",
@@ -51,7 +51,11 @@ describe("Projects API", () => {
       const json = await res.json();
 
       expect(res.status).toBe(200);
-      expect(json.projects).toEqual([]);
+      // No Claude projects, but Codex/Gemini sessions may still be found
+      const claudeProjects = json.projects.filter(
+        (p: { provider: string }) => p.provider === "claude",
+      );
+      expect(claudeProjects).toEqual([]);
     });
 
     it("discovers projects from directory structure", async () => {

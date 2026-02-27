@@ -198,22 +198,17 @@ export class ProjectScanner {
     // Map from normalized path to project index for cross-machine dedup
     const normalizedIndex = new Map<string, number>();
 
-    try {
-      await access(this.projectsDir);
-    } catch {
-      // Directory doesn't exist - return empty list
-      return [];
-    }
-
     // ~/.claude/projects/ can have two structures:
     // 1. Projects directly as -home-user-project/
     // 2. Projects under hostname/ as hostname/-home-user-project/
-    let dirs: string[];
+    let dirs: string[] = [];
     try {
+      await access(this.projectsDir);
       const entries = await readdir(this.projectsDir, { withFileTypes: true });
       dirs = entries.filter((e) => e.isDirectory()).map((e) => e.name);
     } catch {
-      return [];
+      // Directory doesn't exist or unreadable — skip Claude project scanning
+      // but continue to Codex/Gemini/metadata merge below
     }
 
     // Helper to add a Claude project, merging cross-machine duplicates
