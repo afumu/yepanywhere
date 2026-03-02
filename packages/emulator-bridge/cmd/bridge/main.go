@@ -89,8 +89,15 @@ func runStandalone(addr, emuAddr string, maxWidth, fps int) {
 			srcW, srcH, targetW, targetH)
 	})
 
+	server := &http.Server{
+		Addr:        addr,
+		Handler:     mux,
+		ReadTimeout: 30 * time.Second,
+		IdleTimeout: 120 * time.Second,
+	}
+
 	log.Printf("Listening on %s", addr)
-	if err := http.ListenAndServe(addr, mux); err != nil {
+	if err := server.ListenAndServe(); err != nil {
 		log.Fatalf("HTTP server error: %v", err)
 	}
 }
@@ -199,8 +206,14 @@ func runIPC(adbPath string) {
 	})
 	fmt.Fprintln(os.Stdout, string(handshake))
 
+	server := &http.Server{
+		Handler:     mux,
+		ReadTimeout: 30 * time.Second,
+		IdleTimeout: 120 * time.Second,
+	}
+
 	log.Printf("IPC mode: listening on 127.0.0.1:%d", port)
-	if err := http.Serve(listener, mux); err != nil {
+	if err := server.Serve(listener); err != nil {
 		log.Fatalf("HTTP server error: %v", err)
 	}
 }

@@ -174,6 +174,11 @@ func (sm *SessionManager) StartSession(sessionID, emulatorID string, opts Sessio
 
 	// Monitor peer close.
 	go func() {
+		defer func() {
+			if r := recover(); r != nil {
+				log.Printf("[session %s] panic recovered in peer monitor: %v", sessionID, r)
+			}
+		}()
 		select {
 		case <-peer.Done():
 			sm.mu.Lock()
@@ -275,6 +280,12 @@ func (sm *SessionManager) closeSessionLocked(sess *streamSession) {
 }
 
 func (sm *SessionManager) runPipeline(sess *streamSession) {
+	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("[session %s] panic recovered in pipeline: %v", sess.sessionID, r)
+		}
+	}()
+
 	// Wait for WebRTC connection before encoding frames.
 	// Frames encoded before the connection is ready are silently dropped by Pion.
 	log.Printf("[session %s] pipeline waiting for WebRTC connection", sess.sessionID)

@@ -19,6 +19,7 @@ type Handler struct {
 	sessions  *SessionManager
 	mu        sync.Mutex
 	conn      *websocket.Conn
+	writeMu   sync.Mutex // protects WebSocket writes (gorilla is not concurrent-write-safe)
 }
 
 // NewHandler creates an IPC handler.
@@ -49,6 +50,9 @@ func (h *Handler) ServeWS(w http.ResponseWriter, r *http.Request) {
 
 	log.Println("IPC WebSocket connected")
 	defer func() {
+		if r := recover(); r != nil {
+			log.Printf("ws: panic recovered in ServeWS: %v", r)
+		}
 		log.Println("IPC WebSocket disconnected")
 		h.mu.Lock()
 		if h.conn == conn {
@@ -122,6 +126,7 @@ func (h *Handler) handleMessage(data []byte) {
 }
 
 // sendRaw sends a raw JSON message to the Yep server WebSocket.
+// Safe for concurrent use from multiple goroutines.
 func (h *Handler) sendRaw(msg []byte) {
 	h.mu.Lock()
 	conn := h.conn
@@ -130,6 +135,9 @@ func (h *Handler) sendRaw(msg []byte) {
 	if conn == nil {
 		return
 	}
+
+	h.writeMu.Lock()
+	defer h.writeMu.Unlock()
 
 	if err := conn.WriteMessage(websocket.TextMessage, msg); err != nil {
 		log.Printf("ipc: ws write error: %v", err)
