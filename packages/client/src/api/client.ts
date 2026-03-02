@@ -934,6 +934,12 @@ export const api = {
     fetchJSON<{ ok: boolean }>(`/emulators/${encodeURIComponent(id)}/stop`, {
       method: "POST",
     }),
+
+  downloadEmulatorBridge: () =>
+    fetchJSON<{ ok: boolean; path?: string; error?: string }>(
+      "/emulators/bridge/download",
+      { method: "POST" },
+    ),
 };
 
 /** Result of testing an SSH connection to a remote executor */

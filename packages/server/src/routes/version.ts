@@ -142,16 +142,14 @@ const RESUME_PROTOCOL_VERSION = 2;
 /** Base capabilities always advertised. */
 const BASE_CAPABILITIES = ["git-status"];
 
+type EmulatorState = "available" | "downloadable" | "unavailable";
+
 interface VersionRouteOptions {
-  emulatorAvailable?: boolean;
+  /** Dynamic emulator state: available (binary exists), downloadable (ADB found, no binary), unavailable (no ADB). */
+  getEmulatorState?: () => EmulatorState;
 }
 
 export function createVersionRoutes(options?: VersionRouteOptions): Hono {
-  const capabilities = [...BASE_CAPABILITIES];
-  if (options?.emulatorAvailable) {
-    capabilities.push("emulator");
-  }
-
   const routes = new Hono();
 
   routes.get("/", async (c) => {
@@ -164,6 +162,14 @@ export function createVersionRoutes(options?: VersionRouteOptions): Hono {
     const updateAvailable = latest
       ? isNewerVersion(baseVersion, latest)
       : false;
+
+    const capabilities = [...BASE_CAPABILITIES];
+    const emulatorState = options?.getEmulatorState?.() ?? "unavailable";
+    if (emulatorState === "available") {
+      capabilities.push("emulator");
+    } else if (emulatorState === "downloadable") {
+      capabilities.push("emulator-download");
+    }
 
     const info: VersionInfo = {
       current,

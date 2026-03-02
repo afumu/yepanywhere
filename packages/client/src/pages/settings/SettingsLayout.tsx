@@ -80,7 +80,10 @@ export function SettingsLayout() {
 
   // Build the list of categories, conditionally including emulator and dev
   const categories: SettingsCategory[] = [...SETTINGS_CATEGORIES];
-  if (capabilities.includes("emulator")) {
+  if (
+    capabilities.includes("emulator") ||
+    capabilities.includes("emulator-download")
+  ) {
     // Insert before "about"
     const aboutIndex = categories.findIndex((c) => c.id === "about");
     categories.splice(

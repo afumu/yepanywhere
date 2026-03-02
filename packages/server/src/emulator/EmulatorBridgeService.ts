@@ -16,6 +16,12 @@ import type {
 } from "@yep-anywhere/shared";
 import { WebSocket } from "ws";
 
+/** Compatible bridge version for auto-download. Update when IPC protocol changes. */
+const BRIDGE_VERSION = "0.1.0";
+
+/** GitHub repo for downloading bridge binaries. */
+const BRIDGE_REPO = "kzahel/yepanywhere";
+
 /** Sidecar stdout handshake message */
 interface SidecarHandshake {
   port: number;
@@ -61,6 +67,10 @@ export class EmulatorBridgeService {
   private restartAttempts = 0;
   private maxRestartAttempts = 5;
   private restartTimer: ReturnType<typeof setTimeout> | null = null;
+  /** Timestamp of last failed start attempt (for cooldown). */
+  private lastStartFailure = 0;
+  /** Cooldown period after a failed start (10s). */
+  private startCooldownMs = 10_000;
 
   /** Maps streaming sessionId → client send function */
   private clientSenders = new Map<string, ClientSendFn>();
@@ -78,21 +88,25 @@ export class EmulatorBridgeService {
   /** Find the sidecar binary path. */
   private findBinaryPath(): string | null {
     // Dev mode: local build
+    const devExt = os.platform() === "win32" ? ".exe" : "";
     const devPath = path.resolve(
       import.meta.dirname,
-      "../../../emulator-bridge/bridge",
+      `../../../emulator-bridge/bridge${devExt}`,
     );
     if (fs.existsSync(devPath)) {
       return devPath;
     }
 
     // Production: downloaded binary
-    const platform = os.platform() === "darwin" ? "darwin" : "linux";
+    const p = os.platform();
+    const platform =
+      p === "darwin" ? "darwin" : p === "win32" ? "windows" : "linux";
     const arch = os.arch() === "arm64" ? "arm64" : "amd64";
+    const ext = p === "win32" ? ".exe" : "";
     const prodPath = path.join(
       this.dataDir,
       "bin",
-      `emulator-bridge-${platform}-${arch}`,
+      `emulator-bridge-${platform}-${arch}${ext}`,
     );
     if (fs.existsSync(prodPath)) {
       return prodPath;
@@ -106,14 +120,78 @@ export class EmulatorBridgeService {
     return this.findBinaryPath() !== null;
   }
 
+  /** Get the platform-specific binary name (e.g. "emulator-bridge-darwin-arm64"). */
+  private getBinaryInfo() {
+    const p = os.platform();
+    const platform =
+      p === "darwin" ? "darwin" : p === "win32" ? "windows" : "linux";
+    const arch = os.arch() === "arm64" ? "arm64" : "amd64";
+    const ext = p === "win32" ? ".exe" : "";
+    const name = `emulator-bridge-${platform}-${arch}${ext}`;
+    return { platform, arch, ext, name };
+  }
+
+  /** Production binary path (where auto-download writes to). */
+  private getProdBinaryPath(): string {
+    const { name } = this.getBinaryInfo();
+    return path.join(this.dataDir, "bin", name);
+  }
+
+  /** Download the bridge binary from GitHub releases. */
+  async downloadBinary(): Promise<string> {
+    const { name } = this.getBinaryInfo();
+    const url = `https://github.com/${BRIDGE_REPO}/releases/download/bridge-v${BRIDGE_VERSION}/${name}`;
+    const destPath = this.getProdBinaryPath();
+    const destDir = path.dirname(destPath);
+
+    // Ensure bin directory exists
+    fs.mkdirSync(destDir, { recursive: true });
+
+    console.log(`[EmulatorBridge] Downloading ${name} from ${url}`);
+
+    const response = await fetch(url, { redirect: "follow" });
+    if (!response.ok) {
+      throw new Error(
+        `Failed to download bridge binary: ${response.status} ${response.statusText}`,
+      );
+    }
+
+    // Write to temp file, then rename atomically
+    const tmpPath = `${destPath}.tmp`;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    fs.writeFileSync(tmpPath, buffer);
+    fs.renameSync(tmpPath, destPath);
+
+    // Make executable on non-Windows
+    if (os.platform() !== "win32") {
+      fs.chmodSync(destPath, 0o755);
+    }
+
+    console.log(
+      `[EmulatorBridge] Downloaded ${name} (${(buffer.length / 1024 / 1024).toFixed(1)} MB)`,
+    );
+    return destPath;
+  }
+
   /** Ensure the sidecar is running. Lazy start on first use. */
   async ensureStarted(): Promise<void> {
     if (this.available) return;
     if (this.startPromise) return this.startPromise;
 
+    // Don't retry too quickly after a failure
+    const elapsed = Date.now() - this.lastStartFailure;
+    if (this.lastStartFailure > 0 && elapsed < this.startCooldownMs) {
+      throw new Error(
+        `Sidecar start on cooldown (${Math.ceil((this.startCooldownMs - elapsed) / 1000)}s remaining)`,
+      );
+    }
+
     this.startPromise = this.start();
     try {
       await this.startPromise;
+    } catch (err) {
+      this.lastStartFailure = Date.now();
+      throw err;
     } finally {
       this.startPromise = null;
     }
@@ -218,6 +296,7 @@ export class EmulatorBridgeService {
 
       this.available = true;
       this.restartAttempts = 0;
+      this.lastStartFailure = 0;
     } finally {
       this.starting = false;
     }

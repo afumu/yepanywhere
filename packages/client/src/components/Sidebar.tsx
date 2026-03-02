@@ -377,7 +377,8 @@ export function Sidebar({
                 basePath={basePath}
               />
             )}
-            {capabilities.includes("emulator") && (
+            {(capabilities.includes("emulator") ||
+              capabilities.includes("emulator-download")) && (
               <SidebarNavItem
                 to="/emulator"
                 icon={SidebarIcons.emulator}

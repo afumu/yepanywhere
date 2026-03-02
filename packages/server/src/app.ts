@@ -388,7 +388,12 @@ export function createApp(options: AppOptions): AppResult {
   app.route(
     "/api/version",
     createVersionRoutes({
-      emulatorAvailable: !!options.emulatorBridgeService?.hasBinary(),
+      getEmulatorState: () => {
+        if (!options.emulatorBridgeService) return "unavailable";
+        return options.emulatorBridgeService.hasBinary()
+          ? "available"
+          : "downloadable";
+      },
     }),
   );
 

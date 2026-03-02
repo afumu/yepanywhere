@@ -1,10 +1,12 @@
 import type { EmulatorInfo } from "@yep-anywhere/shared";
 import { useEffect, useState } from "react";
+import { api } from "../api/client";
 import { EmulatorNavButtons } from "../components/EmulatorNavButtons";
 import { EmulatorStream } from "../components/EmulatorStream";
 import { PageHeader } from "../components/PageHeader";
 import { useEmulatorStream } from "../hooks/useEmulatorStream";
 import { useEmulators } from "../hooks/useEmulators";
+import { useVersion } from "../hooks/useVersion";
 import { useNavigationLayout } from "../layouts";
 
 function EmulatorListItem({
@@ -114,21 +116,64 @@ function StreamView({
   );
 }
 
+function DownloadPrompt({ onDownloaded }: { onDownloaded: () => void }) {
+  const [downloading, setDownloading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setError(null);
+    try {
+      const result = await api.downloadEmulatorBridge();
+      if (result.ok) {
+        onDownloaded();
+      } else {
+        setError(result.error ?? "Download failed");
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : String(err));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  return (
+    <div className="emulator-download-prompt">
+      <p>Emulator streaming requires the emulator bridge binary (~17 MB).</p>
+      {error && <div className="emulator-error">{error}</div>}
+      <button
+        type="button"
+        className="emulator-btn emulator-btn-primary"
+        onClick={handleDownload}
+        disabled={downloading}
+      >
+        {downloading ? "Downloading..." : "Download Bridge"}
+      </button>
+    </div>
+  );
+}
+
 export function EmulatorPage() {
   const { openSidebar, isWideScreen, toggleSidebar, isSidebarCollapsed } =
     useNavigationLayout();
+  const { version: versionInfo, refetch: refetchVersion } = useVersion();
+  const capabilities = versionInfo?.capabilities ?? [];
+  const needsDownload =
+    capabilities.includes("emulator-download") &&
+    !capabilities.includes("emulator");
+
   const { emulators, loading, error, startEmulator, stopEmulator } =
-    useEmulators();
+    useEmulators({ enabled: !needsDownload });
   const [activeEmulatorId, setActiveEmulatorId] = useState<string | null>(null);
 
   // ?auto — auto-connect to the first running emulator
   useEffect(() => {
-    if (activeEmulatorId || loading) return;
+    if (activeEmulatorId || loading || needsDownload) return;
     const params = new URLSearchParams(window.location.search);
     if (!params.has("auto")) return;
     const running = emulators.find((e) => e.state === "running");
     if (running) setActiveEmulatorId(running.id);
-  }, [emulators, loading, activeEmulatorId]);
+  }, [emulators, loading, activeEmulatorId, needsDownload]);
 
   if (activeEmulatorId) {
     return (
@@ -155,26 +200,32 @@ export function EmulatorPage() {
         />
         <main className="page-scroll-container">
           <div className="page-content-inner">
-            {loading && <div className="emulator-loading">Loading...</div>}
-            {error && <div className="emulator-error">{error}</div>}
-            {!loading && emulators.length === 0 && (
-              <div className="emulator-empty">
-                No emulators detected. Make sure ADB is running and emulators
-                are available.
-              </div>
-            )}
-            {emulators.length > 0 && (
-              <div className="emulator-list">
-                {emulators.map((emu) => (
-                  <EmulatorListItem
-                    key={emu.id}
-                    emulator={emu}
-                    onConnect={setActiveEmulatorId}
-                    onStart={startEmulator}
-                    onStop={stopEmulator}
-                  />
-                ))}
-              </div>
+            {needsDownload ? (
+              <DownloadPrompt onDownloaded={refetchVersion} />
+            ) : (
+              <>
+                {loading && <div className="emulator-loading">Loading...</div>}
+                {error && <div className="emulator-error">{error}</div>}
+                {!loading && emulators.length === 0 && (
+                  <div className="emulator-empty">
+                    No emulators detected. Make sure ADB is running and
+                    emulators are available.
+                  </div>
+                )}
+                {emulators.length > 0 && (
+                  <div className="emulator-list">
+                    {emulators.map((emu) => (
+                      <EmulatorListItem
+                        key={emu.id}
+                        emulator={emu}
+                        onConnect={setActiveEmulatorId}
+                        onStart={startEmulator}
+                        onStop={stopEmulator}
+                      />
+                    ))}
+                  </div>
+                )}
+              </>
             )}
           </div>
         </main>

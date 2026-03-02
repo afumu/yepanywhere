@@ -172,3 +172,18 @@
   text-align: center;
   color: var(--app-text-secondary);
 }
+
+/* Download prompt */
+.emulator-download-prompt {
+  padding: 32px 24px;
+  text-align: center;
+  color: var(--app-text-secondary);
+}
+
+.emulator-download-prompt p {
+  margin: 0 0 16px;
+}
+
+.emulator-download-prompt .emulator-error {
+  margin-bottom: 16px;
+}
