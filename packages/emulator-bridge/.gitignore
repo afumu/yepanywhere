@@ -1,3 +1,4 @@
-# Compiled binaries (at repo root, not cmd/ subdirectories)
+# Compiled binaries
 /bridge
 /validate
+/bin/
