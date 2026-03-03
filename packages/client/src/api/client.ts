@@ -1001,4 +1001,6 @@ export interface ServerSettings {
   ollamaSystemPrompt?: string;
   /** Whether to use the full Claude system prompt for Ollama */
   ollamaUseFullSystemPrompt?: boolean;
+  /** Whether the device bridge (emulator/device streaming) feature is enabled */
+  deviceBridgeEnabled?: boolean;
 }

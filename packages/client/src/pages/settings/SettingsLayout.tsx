@@ -82,7 +82,8 @@ export function SettingsLayout() {
   const categories: SettingsCategory[] = [...SETTINGS_CATEGORIES];
   if (
     capabilities.includes("deviceBridge") ||
-    capabilities.includes("deviceBridge-download")
+    capabilities.includes("deviceBridge-download") ||
+    capabilities.includes("deviceBridge-available")
   ) {
     // Insert before "about"
     const aboutIndex = categories.findIndex((c) => c.id === "about");

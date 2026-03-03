@@ -147,6 +147,8 @@ type DeviceBridgeState = "available" | "downloadable" | "unavailable";
 interface VersionRouteOptions {
   /** Dynamic device bridge state: available (binary exists), downloadable (ADB found, no binary), unavailable (no ADB). */
   getDeviceBridgeState?: () => DeviceBridgeState;
+  /** Whether the user has opted into the device bridge feature. */
+  isDeviceBridgeEnabled?: () => boolean;
 }
 
 export function createVersionRoutes(options?: VersionRouteOptions): Hono {
@@ -166,10 +168,18 @@ export function createVersionRoutes(options?: VersionRouteOptions): Hono {
     const capabilities = [...BASE_CAPABILITIES];
     const deviceBridgeState =
       options?.getDeviceBridgeState?.() ?? "unavailable";
-    if (deviceBridgeState === "available") {
-      capabilities.push("deviceBridge");
-    } else if (deviceBridgeState === "downloadable") {
-      capabilities.push("deviceBridge-download");
+    if (deviceBridgeState !== "unavailable") {
+      // Hardware is present — always advertise so settings page can show opt-in
+      capabilities.push("deviceBridge-available");
+      // Only advertise active capabilities when user has opted in
+      const enabled = options?.isDeviceBridgeEnabled?.() ?? false;
+      if (enabled) {
+        if (deviceBridgeState === "available") {
+          capabilities.push("deviceBridge");
+        } else {
+          capabilities.push("deviceBridge-download");
+        }
+      }
     }
 
     const info: VersionInfo = {

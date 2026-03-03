@@ -394,6 +394,9 @@ export function createApp(options: AppOptions): AppResult {
           ? "available"
           : "downloadable";
       },
+      isDeviceBridgeEnabled: () =>
+        options.serverSettingsService?.getSetting("deviceBridgeEnabled") ??
+        false,
     }),
   );
 

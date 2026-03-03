@@ -168,6 +168,11 @@ export function createSettingsRoutes(deps: SettingsRoutesDeps): Hono {
       updates.ollamaUseFullSystemPrompt = body.ollamaUseFullSystemPrompt;
     }
 
+    // Handle deviceBridgeEnabled boolean
+    if (typeof body.deviceBridgeEnabled === "boolean") {
+      updates.deviceBridgeEnabled = body.deviceBridgeEnabled;
+    }
+
     if (Object.keys(updates).length === 0) {
       return c.json({ error: "At least one valid setting is required" }, 400);
     }
