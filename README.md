@@ -25,6 +25,7 @@ A better remote interface for Claude Code and Codex. Self-hosted, no cloud accou
 - **Fork/clone conversations** — Branch from any message point to explore alternatives
 - **Tiered inbox** — Needs Attention → Active → Recent → Unread. Stop cycling through terminal tabs
 - **Global activity stream** — See what all your agents are doing across sessions
+- **Remote device control** — Stream Android emulators and devices to your phone over WebRTC. Touch input, nav buttons, adaptive quality
 - **Server-owned processes** — Client disconnects don't interrupt work
 - **Voice input** — Talk to your agents via browser speech API
 - **Fast on mobile** — Syntax highlighting and markdown rendering happen server-side
@@ -49,6 +50,7 @@ No database, no cloud, no accounts. 100% open source (MIT).
   <img src="site/public/screenshots/navigation.png" width="250" alt="Navigation">
   <img src="site/public/screenshots/new-session.png" width="250" alt="New session">
   <img src="site/public/screenshots/mobile-diff.png" width="250" alt="Mobile diff view">
+  <img src="site/public/screenshots/device-stream.png" width="250" alt="Remote device control">
 </p>
 
 **Works great on desktop too!**
