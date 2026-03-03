@@ -211,15 +211,18 @@ function StreamView({
 
       {latestProfileEvent && (
         <div className="emulator-profile-state">
-          Profile {latestProfileEvent.direction}: tier {latestProfileEvent.tier}/
-          {latestProfileEvent.totalTiers} ({latestProfileEvent.width}x
+          Profile {latestProfileEvent.direction}: tier {latestProfileEvent.tier}
+          /{latestProfileEvent.totalTiers} ({latestProfileEvent.width}x
           {latestProfileEvent.height}@{latestProfileEvent.fps}fps,{" "}
           {Math.round(latestProfileEvent.bitrate / 1000)} kbps)
         </div>
       )}
 
       {profileEventHistory.length > 0 && (
-        <div className="emulator-profile-timeline" data-testid="profile-timeline">
+        <div
+          className="emulator-profile-timeline"
+          data-testid="profile-timeline"
+        >
           {profileEventHistory.map((event, idx) => (
             <div
               key={`${event.receivedAt}-${event.direction}-${event.tier}-${idx}`}

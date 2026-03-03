@@ -195,8 +195,9 @@ async function captureStreamHealth(page: Page): Promise<StreamHealthSnapshot> {
         : null;
     const totalVideoFrames =
       quality?.totalVideoFrames ??
-      ((video as HTMLVideoElement & { webkitDecodedFrameCount?: number })
-        .webkitDecodedFrameCount ?? 0);
+      (video as HTMLVideoElement & { webkitDecodedFrameCount?: number })
+        .webkitDecodedFrameCount ??
+      0;
 
     return {
       connectionText,

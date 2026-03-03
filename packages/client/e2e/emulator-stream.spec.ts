@@ -83,9 +83,7 @@ async function adaptiveProfileTransitionsFromClient(
     return (events ?? [])
       .map((event) => event.direction)
       .filter(
-        (
-          direction,
-        ): direction is "downshift" | "upshift" =>
+        (direction): direction is "downshift" | "upshift" =>
           direction === "downshift" || direction === "upshift",
       );
   });
@@ -208,11 +206,15 @@ test("emits adaptive profile downshift/upshift events via APK transport override
   await dismissOnboardingIfVisible(page);
 
   await expect(
-    page.locator(".emulator-list-group-title", { hasText: "Android Emulators" }),
+    page.locator(".emulator-list-group-title", {
+      hasText: "Android Emulators",
+    }),
   ).toBeVisible({ timeout: 15_000 });
 
   await page.evaluate((serial) => {
-    const groups = Array.from(document.querySelectorAll(".emulator-list-group"));
+    const groups = Array.from(
+      document.querySelectorAll(".emulator-list-group"),
+    );
     const groupEl = groups.find((g) =>
       g
         .querySelector(".emulator-list-group-title")
@@ -239,7 +241,8 @@ test("emits adaptive profile downshift/upshift events via APK transport override
     const exactRow =
       rows.find(
         (row) =>
-          row.textContent?.includes(serial) && connectButtonForRow(row) !== null,
+          row.textContent?.includes(serial) &&
+          connectButtonForRow(row) !== null,
       ) ?? null;
     const fallbackRow =
       rows.find((row) => connectButtonForRow(row) !== null) ?? null;
