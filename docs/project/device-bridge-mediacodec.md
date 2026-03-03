@@ -383,6 +383,13 @@ Each phase/slice must be gated by tests before landing.
 Known gaps in this slice:
 - Resolution/FPS restart fallback under sustained congestion is not yet wired; current behavior uses bitrate + keyframe controls only.
 
+### Phase 3B (current slice) status
+
+- Added sustained-congestion fallback to lower stream profiles via `stream_stop` + `stream_start`
+- Added profile ladder with coordinated resolution/FPS/bitrate steps and restart cooldowns
+- Added stability-based recovery restarts back toward higher profiles when queue pressure clears
+- Added unit gates for profile generation and restart wiring in `internal/ipc`
+
 ### Phase 4 — Polish
 
 1. Auto-detect device capability: try `stream_start`, fall back to polling if it fails

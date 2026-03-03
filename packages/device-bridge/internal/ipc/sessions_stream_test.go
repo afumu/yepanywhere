@@ -9,10 +9,12 @@ import (
 )
 
 type streamTestDevice struct {
-	startErr   error
-	startCalls int
-	startOpts  device.StreamOptions
-	source     *device.NalSource
+	startErr         error
+	startCalls       int
+	stopCalls        int
+	startOpts        device.StreamOptions
+	source           *device.NalSource
+	newSourceOnStart bool
 }
 
 func (d *streamTestDevice) GetFrame(context.Context, int) (*device.Frame, error) { return nil, nil }
@@ -27,13 +29,16 @@ func (d *streamTestDevice) StartStream(_ context.Context, opts device.StreamOpti
 	if d.startErr != nil {
 		return nil, d.startErr
 	}
-	if d.source == nil {
+	if d.source == nil || d.newSourceOnStart {
 		d.source = device.NewNalSource()
 	}
 	return d.source, nil
 }
 
-func (d *streamTestDevice) StopStream(context.Context) error            { return nil }
+func (d *streamTestDevice) StopStream(context.Context) error {
+	d.stopCalls++
+	return nil
+}
 func (d *streamTestDevice) SetStreamBitrate(context.Context, int) error { return nil }
 func (d *streamTestDevice) RequestStreamKeyframe(context.Context) error { return nil }
 
@@ -117,5 +122,73 @@ func TestClampBitrateUp(t *testing.T) {
 	}
 	if got := clampBitrateUp(2_000_000, 2_000_000); got != 2_000_000 {
 		t.Fatalf("expected max to stay unchanged, got %d", got)
+	}
+}
+
+func TestBuildAdaptiveProfilesMonotonic(t *testing.T) {
+	profiles := buildAdaptiveProfiles(1280, 720, 30)
+	if len(profiles) < 2 {
+		t.Fatalf("expected multiple profiles, got %d", len(profiles))
+	}
+	if profiles[0].Width != 1280 || profiles[0].Height != 720 || profiles[0].FPS != 30 {
+		t.Fatalf("unexpected base profile: %+v", profiles[0])
+	}
+	for i := 1; i < len(profiles); i++ {
+		prev := profiles[i-1]
+		cur := profiles[i]
+		if cur.Width > prev.Width || cur.Height > prev.Height || cur.FPS > prev.FPS {
+			t.Fatalf("profiles must not increase at step %d: prev=%+v cur=%+v", i, prev, cur)
+		}
+		if cur.Width%2 != 0 || cur.Height%2 != 0 {
+			t.Fatalf("dimensions must be even: %+v", cur)
+		}
+		if cur.BitrateBps < 500_000 {
+			t.Fatalf("bitrate floor violated: %+v", cur)
+		}
+	}
+}
+
+func TestRestartNALStreamUpdatesSessionProfile(t *testing.T) {
+	dev := &streamTestDevice{newSourceOnStart: true}
+	initialSource := device.NewNalSource()
+	dev.source = initialSource
+	sess := &streamSession{
+		sessionID: "s1",
+		nalSource: initialSource,
+		streamCap: dev,
+		targetW:   1280,
+		targetH:   720,
+		maxFPS:    30,
+	}
+	sm := &SessionManager{}
+
+	nextOpts := device.StreamOptions{
+		Width:      960,
+		Height:     540,
+		FPS:        24,
+		BitrateBps: 1_200_000,
+	}
+
+	newSource, err := sm.restartNALStream(sess, nextOpts)
+	if err != nil {
+		t.Fatalf("restartNALStream: %v", err)
+	}
+	if newSource == nil {
+		t.Fatal("expected new source")
+	}
+	if newSource == initialSource {
+		t.Fatal("expected source replacement on restart")
+	}
+	if sess.nalSource != newSource {
+		t.Fatal("session source was not updated")
+	}
+	if dev.stopCalls != 1 || dev.startCalls != 1 {
+		t.Fatalf("expected 1 stop/1 start call, got stop=%d start=%d", dev.stopCalls, dev.startCalls)
+	}
+	if dev.startOpts != nextOpts {
+		t.Fatalf("unexpected restart opts: %+v", dev.startOpts)
+	}
+	if sess.targetW != nextOpts.Width || sess.targetH != nextOpts.Height || sess.maxFPS != nextOpts.FPS {
+		t.Fatalf("session profile not updated: target=%dx%d fps=%d", sess.targetW, sess.targetH, sess.maxFPS)
 	}
 }
