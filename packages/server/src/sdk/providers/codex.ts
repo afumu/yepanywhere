@@ -1580,13 +1580,36 @@ export class CodexProvider implements AgentProvider {
           const primary = rateLimits.primary as
             | Record<string, unknown>
             | undefined;
+          const secondary = rateLimits.secondary as
+            | Record<string, unknown>
+            | undefined;
+          const primaryUsedPercent =
+            this.getOptionalNumber(primary?.usedPercent) ??
+            this.getOptionalNumber(primary?.used_percent);
+          const secondaryUsedPercent =
+            this.getOptionalNumber(secondary?.usedPercent) ??
+            this.getOptionalNumber(secondary?.used_percent);
+          const usageExhausted =
+            (primaryUsedPercent !== null && primaryUsedPercent >= 100) ||
+            (secondaryUsedPercent !== null && secondaryUsedPercent >= 100);
+          const hasCredits =
+            this.getOptionalBoolean(credits?.hasCredits) ??
+            this.getOptionalBoolean(credits?.has_credits);
+          const unlimited = this.getOptionalBoolean(credits?.unlimited);
+          const balance = this.getOptionalNumber(credits?.balance);
+          const creditsExhausted =
+            hasCredits === false &&
+            unlimited !== true &&
+            balance !== null &&
+            balance <= 0 &&
+            primaryUsedPercent === null &&
+            secondaryUsedPercent === null;
           const isExhausted =
-            (credits && credits.hasCredits === false) ||
-            (primary &&
-              typeof primary.usedPercent === "number" &&
-              primary.usedPercent >= 100);
+            usageExhausted || creditsExhausted;
           if (isExhausted) {
-            const resetsAt = primary?.resetsAt;
+            const resetsAt =
+              this.getOptionalNumber(primary?.resetsAt) ??
+              this.getOptionalNumber(primary?.resets_at);
             const resetMsg =
               typeof resetsAt === "number"
                 ? ` Resets at ${new Date(resetsAt * 1000).toISOString()}.`
@@ -2251,6 +2274,10 @@ export class CodexProvider implements AgentProvider {
 
   private getOptionalNumber(value: unknown): number | null {
     return typeof value === "number" && Number.isFinite(value) ? value : null;
+  }
+
+  private getOptionalBoolean(value: unknown): boolean | null {
+    return typeof value === "boolean" ? value : null;
   }
 }
 

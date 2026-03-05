@@ -257,6 +257,51 @@ describe("CodexProvider Event Normalization", () => {
     });
   });
 
+  it("normalizes shell-launcher wrapped command execution to Read shape", () => {
+    const provider = createTestProvider() as unknown as {
+      convertItemToSDKMessages: (
+        item: unknown,
+        sessionId: string,
+        turnId: string,
+        isComplete: boolean,
+      ) => Array<Record<string, unknown>>;
+    };
+
+    const messages = provider.convertItemToSDKMessages(
+      {
+        id: "call-read-wrapped",
+        type: "command_execution",
+        command: '/bin/bash -lc "sed -n \'10,12p\' src/example.ts"',
+        aggregated_output: "line 10\nline 11\nline 12",
+        exit_code: 0,
+        status: "completed",
+      },
+      "session-1",
+      "turn-1",
+      true,
+    );
+
+    expect(messages).toHaveLength(2);
+    expect(messages[0]?.message).toMatchObject({
+      role: "assistant",
+      content: [
+        {
+          type: "tool_use",
+          id: "call-read-wrapped",
+          name: "Read",
+          input: { file_path: "src/example.ts", offset: 10, limit: 3 },
+        },
+      ],
+    });
+    expect(messages[1]?.toolUseResult).toMatchObject({
+      type: "text",
+      file: {
+        filePath: "src/example.ts",
+        startLine: 10,
+      },
+    });
+  });
+
   it("normalizes heredoc command execution as Write with structured file result", () => {
     const provider = createTestProvider() as unknown as {
       convertItemToSDKMessages: (
@@ -362,6 +407,77 @@ describe("CodexProvider Event Normalization", () => {
     expect(messages[1]?.toolUseResult).toMatchObject({
       mode: "files_with_matches",
       numFiles: 0,
+    });
+  });
+
+  it("does not emit rate limit errors when hasCredits is false but usage is below 100%", () => {
+    const provider = createTestProvider() as unknown as {
+      convertNotificationToSDKMessages: (
+        notification: { method: string; params?: unknown },
+        sessionId: string,
+        usageByTurnId: Map<string, unknown>,
+      ) => Array<Record<string, unknown>>;
+    };
+
+    const messages = provider.convertNotificationToSDKMessages(
+      {
+        method: "account/rateLimits/updated",
+        params: {
+          rateLimits: {
+            primary: {
+              usedPercent: 21,
+              resetsAt: 1772721801,
+            },
+            credits: {
+              hasCredits: false,
+              unlimited: false,
+              balance: null,
+            },
+          },
+        },
+      },
+      "session-1",
+      new Map(),
+    );
+
+    expect(messages).toEqual([]);
+  });
+
+  it("emits rate limit errors when usage is exhausted (snake_case fields)", () => {
+    const provider = createTestProvider() as unknown as {
+      convertNotificationToSDKMessages: (
+        notification: { method: string; params?: unknown },
+        sessionId: string,
+        usageByTurnId: Map<string, unknown>,
+      ) => Array<Record<string, unknown>>;
+    };
+
+    const messages = provider.convertNotificationToSDKMessages(
+      {
+        method: "account/rateLimits/updated",
+        params: {
+          rateLimits: {
+            primary: {
+              used_percent: 100,
+              resets_at: 1772721801,
+            },
+            credits: {
+              has_credits: false,
+              unlimited: false,
+              balance: null,
+            },
+          },
+        },
+      },
+      "session-1",
+      new Map(),
+    );
+
+    expect(messages).toHaveLength(1);
+    expect(messages[0]).toMatchObject({
+      type: "error",
+      session_id: "session-1",
+      error: "Rate limit exceeded. Resets at 2026-03-05T14:43:21.000Z.",
     });
   });
 });

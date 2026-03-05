@@ -166,8 +166,7 @@ export const writeStdinRenderer: ToolRenderer<
     const sessionId = getSessionId(input);
     const chars = getChars(input);
     const command = getLinkedCommand(input);
-    const commandSummary =
-      command && command.length > 60 ? `${command.slice(0, 57)}...` : command;
+    const commandSummary = command;
 
     if (chars === undefined || chars.length === 0) {
       if (commandSummary) {

@@ -420,14 +420,15 @@ export const bashRenderer: ToolRenderer<BashInput, BashResult> = {
   getUseSummary(input) {
     const i = input as BashInput;
     const command = getBashCommand(i);
-    // Show description if available, otherwise truncated command
+    // Show description if available, otherwise full command.
+    // Row-level truncation is handled by CSS (.tool-summary text-overflow).
     if (i.description) {
       return i.description;
     }
     if (!command) {
       return "Bash command";
     }
-    return command.length > 60 ? `${command.slice(0, 57)}...` : command;
+    return command;
   },
 
   getResultSummary(result, isError) {

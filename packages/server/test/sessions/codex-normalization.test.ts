@@ -319,6 +319,52 @@ describe("Codex Normalization", () => {
     });
   });
 
+  it("maps shell-launcher wrapped sed commands to Read", () => {
+    const entries: CodexSessionEntry[] = [
+      {
+        type: "response_item",
+        timestamp: "2024-01-01T00:00:01Z",
+        payload: {
+          type: "function_call",
+          name: "shell_command",
+          call_id: "call-wrapped-sed",
+          arguments: JSON.stringify({
+            command:
+              '/bin/bash -lc "sed -n \'120,122p\' packages/server/src/auth/routes.ts"',
+          }),
+        },
+      },
+      {
+        type: "response_item",
+        timestamp: "2024-01-01T00:00:02Z",
+        payload: {
+          type: "function_call_output",
+          call_id: "call-wrapped-sed",
+          output:
+            "Chunk ID: wrapped111\nWall time: 0.4000 seconds\nProcess exited with code 0\nOriginal token count: 123\nOutput:\n\nline120\nline121\nline122\n",
+        },
+      },
+    ];
+
+    const result = normalizeSession(buildLoadedSession(entries));
+    expect(result.messages).toHaveLength(2);
+
+    const toolUseContent = result.messages[0]?.message?.content;
+    const useBlock = Array.isArray(toolUseContent)
+      ? toolUseContent[0]
+      : toolUseContent;
+    expect(useBlock).toMatchObject({
+      type: "tool_use",
+      id: "call-wrapped-sed",
+      name: "Read",
+      input: {
+        file_path: "packages/server/src/auth/routes.ts",
+        offset: 120,
+        limit: 3,
+      },
+    });
+  });
+
   it("maps nl -ba | sed range commands to Read and strips line numbers", () => {
     const entries: CodexSessionEntry[] = [
       {

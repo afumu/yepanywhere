@@ -45,6 +45,8 @@ interface NormalizedCodexToolOutputWithExitCode
   exitCode?: number;
 }
 
+const SHELL_EXECUTABLES = new Set(["bash", "sh", "zsh", "dash"]);
+
 export function parseCodexToolArguments(argumentsText?: string): unknown {
   if (!argumentsText) {
     return {};
@@ -90,8 +92,9 @@ export function normalizeCodexToolInvocation(
   if (!command) {
     return { toolName: "Bash", input: normalizedInput };
   }
+  const normalizedCommand = unwrapShellLauncherCommand(command);
 
-  const readShellInfo = parseReadShellCommand(command);
+  const readShellInfo = parseReadShellCommand(normalizedCommand);
   if (readShellInfo) {
     return {
       toolName: "Read",
@@ -100,7 +103,7 @@ export function normalizeCodexToolInvocation(
     };
   }
 
-  const grepInput = parseRipgrepCommand(command);
+  const grepInput = parseRipgrepCommand(normalizedCommand);
   if (grepInput) {
     return {
       toolName: "Grep",
@@ -108,7 +111,7 @@ export function normalizeCodexToolInvocation(
     };
   }
 
-  const writeShellInfo = parseHeredocWriteShellCommand(command);
+  const writeShellInfo = parseHeredocWriteShellCommand(normalizedCommand);
   if (writeShellInfo) {
     return {
       toolName: "Write",
@@ -285,6 +288,58 @@ function tokenizeShellCommand(command: string): string[] {
   }
 
   return tokens;
+}
+
+function getExecutableName(token: string): string {
+  const normalized = token.replace(/\\/g, "/");
+  return (normalized.split("/").pop() || token).toLowerCase();
+}
+
+function isShellExecutable(token: string): boolean {
+  return SHELL_EXECUTABLES.has(getExecutableName(token));
+}
+
+function getShellLauncherPrefixLength(tokens: string[]): number {
+  if (tokens.length < 3) {
+    return 0;
+  }
+
+  const first = tokens[0] || "";
+  const second = tokens[1] || "";
+  const third = tokens[2] || "";
+
+  // /usr/bin/env bash -lc "command"
+  if (
+    getExecutableName(first) === "env" &&
+    isShellExecutable(second) &&
+    third === "-lc" &&
+    tokens.length >= 4
+  ) {
+    return 3;
+  }
+
+  // /bin/bash -lc "command"
+  if (isShellExecutable(first) && second === "-lc" && tokens.length >= 3) {
+    return 2;
+  }
+
+  return 0;
+}
+
+function unwrapShellLauncherCommand(command: string): string {
+  let normalized = command.trim();
+
+  // Allow nested wrappers, e.g. `bash -lc "env bash -lc \"...\""`
+  for (let i = 0; i < 3; i++) {
+    const tokens = tokenizeShellCommand(normalized);
+    const launcherPrefixLength = getShellLauncherPrefixLength(tokens);
+    if (launcherPrefixLength === 0 || tokens.length <= launcherPrefixLength) {
+      break;
+    }
+    normalized = tokens.slice(launcherPrefixLength).join(" ").trim();
+  }
+
+  return normalized;
 }
 
 function parseLineRangeToken(

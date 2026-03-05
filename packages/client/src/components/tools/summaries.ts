@@ -98,7 +98,7 @@ function getDefaultInputSummary(toolName: string, input: unknown): string {
     case "Bash":
       {
         const command = getDisplayBashCommandFromInput(i);
-        if (command) return truncate(command, 40);
+        if (command) return command;
       }
       break;
     case "Glob":
