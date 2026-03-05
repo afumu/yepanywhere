@@ -330,7 +330,7 @@ describe("Codex Normalization", () => {
           call_id: "call-wrapped-sed",
           arguments: JSON.stringify({
             command:
-              '/bin/bash -lc "sed -n \'120,122p\' packages/server/src/auth/routes.ts"',
+              "/bin/bash -lc \"sed -n '120,122p' packages/server/src/auth/routes.ts\"",
           }),
         },
       },

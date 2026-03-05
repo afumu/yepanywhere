@@ -220,7 +220,7 @@ function UploadedFileItem({ file }: { file: UploadedFileInfo }) {
   const [showModal, setShowModal] = useState(false);
   const isImage = isImageMimeType(file.mimeType);
   const apiPath = isImage ? getUploadUrl(file.path) : null;
-  const directPreviewUrl = isImage ? file.previewUrl ?? null : null;
+  const directPreviewUrl = isImage ? (file.previewUrl ?? null) : null;
 
   // Use the remote image hook to handle fetching via relay when needed
   const { url: remoteImageUrl, loading, error } = useRemoteImage(apiPath);

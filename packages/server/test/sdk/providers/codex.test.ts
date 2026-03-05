@@ -271,7 +271,7 @@ describe("CodexProvider Event Normalization", () => {
       {
         id: "call-read-wrapped",
         type: "command_execution",
-        command: '/bin/bash -lc "sed -n \'10,12p\' src/example.ts"',
+        command: "/bin/bash -lc \"sed -n '10,12p' src/example.ts\"",
         aggregated_output: "line 10\nline 11\nline 12",
         exit_code: 0,
         status: "completed",
