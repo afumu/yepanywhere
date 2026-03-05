@@ -1567,62 +1567,8 @@ export class CodexProvider implements AgentProvider {
       }
 
       case "account/rateLimits/updated": {
-        const params = notification.params as
-          | Record<string, unknown>
-          | undefined;
-        const rateLimits = params?.rateLimits as
-          | Record<string, unknown>
-          | undefined;
-        if (rateLimits) {
-          const credits = rateLimits.credits as
-            | Record<string, unknown>
-            | undefined;
-          const primary = rateLimits.primary as
-            | Record<string, unknown>
-            | undefined;
-          const secondary = rateLimits.secondary as
-            | Record<string, unknown>
-            | undefined;
-          const primaryUsedPercent =
-            this.getOptionalNumber(primary?.usedPercent) ??
-            this.getOptionalNumber(primary?.used_percent);
-          const secondaryUsedPercent =
-            this.getOptionalNumber(secondary?.usedPercent) ??
-            this.getOptionalNumber(secondary?.used_percent);
-          const usageExhausted =
-            (primaryUsedPercent !== null && primaryUsedPercent >= 100) ||
-            (secondaryUsedPercent !== null && secondaryUsedPercent >= 100);
-          const hasCredits =
-            this.getOptionalBoolean(credits?.hasCredits) ??
-            this.getOptionalBoolean(credits?.has_credits);
-          const unlimited = this.getOptionalBoolean(credits?.unlimited);
-          const balance = this.getOptionalNumber(credits?.balance);
-          const creditsExhausted =
-            hasCredits === false &&
-            unlimited !== true &&
-            balance !== null &&
-            balance <= 0 &&
-            primaryUsedPercent === null &&
-            secondaryUsedPercent === null;
-          const isExhausted =
-            usageExhausted || creditsExhausted;
-          if (isExhausted) {
-            const resetsAt =
-              this.getOptionalNumber(primary?.resetsAt) ??
-              this.getOptionalNumber(primary?.resets_at);
-            const resetMsg =
-              typeof resetsAt === "number"
-                ? ` Resets at ${new Date(resetsAt * 1000).toISOString()}.`
-                : "";
-            return [
-              {
-                type: "error",
-                session_id: sessionId,
-                error: `Rate limit exceeded.${resetMsg}`,
-              } as SDKMessage,
-            ];
-          }
-        }
+        // account/rateLimits/updated is telemetry, not a terminal turn error.
+        // Real usage-limit/quota failures arrive via the `error` notification.
         return [];
       }
 
@@ -2274,10 +2220,6 @@ export class CodexProvider implements AgentProvider {
 
   private getOptionalNumber(value: unknown): number | null {
     return typeof value === "number" && Number.isFinite(value) ? value : null;
-  }
-
-  private getOptionalBoolean(value: unknown): boolean | null {
-    return typeof value === "boolean" ? value : null;
   }
 }
 

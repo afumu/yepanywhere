@@ -443,7 +443,7 @@ describe("CodexProvider Event Normalization", () => {
     expect(messages).toEqual([]);
   });
 
-  it("emits rate limit errors when usage is exhausted (snake_case fields)", () => {
+  it("does not emit synthetic errors for exhausted usage snapshots", () => {
     const provider = createTestProvider() as unknown as {
       convertNotificationToSDKMessages: (
         notification: { method: string; params?: unknown },
@@ -473,11 +473,42 @@ describe("CodexProvider Event Normalization", () => {
       new Map(),
     );
 
+    expect(messages).toEqual([]);
+  });
+
+  it("emits errors from codex error notifications", () => {
+    const provider = createTestProvider() as unknown as {
+      convertNotificationToSDKMessages: (
+        notification: { method: string; params?: unknown },
+        sessionId: string,
+        usageByTurnId: Map<string, unknown>,
+      ) => Array<Record<string, unknown>>;
+    };
+
+    const messages = provider.convertNotificationToSDKMessages(
+      {
+        method: "error",
+        params: {
+          threadId: "thread-1",
+          turnId: "turn-1",
+          willRetry: false,
+          error: {
+            message:
+              "You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again later.",
+            codexErrorInfo: "usageLimitExceeded",
+          },
+        },
+      },
+      "session-1",
+      new Map(),
+    );
+
     expect(messages).toHaveLength(1);
     expect(messages[0]).toMatchObject({
       type: "error",
       session_id: "session-1",
-      error: "Rate limit exceeded. Resets at 2026-03-05T14:43:21.000Z.",
+      error:
+        "You've hit your usage limit. Visit https://chatgpt.com/codex/settings/usage to purchase more credits or try again later.",
     });
   });
 });
