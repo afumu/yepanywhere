@@ -1042,8 +1042,17 @@ export function useSession(
         ? sessionWatchConnected
         : false;
 
+  // Allow external model update (e.g., after /model command switches mid-session)
+  const setSessionModel = useCallback(
+    (model: string) => {
+      setSession((prev) => (prev ? { ...prev, model } : prev));
+    },
+    [setSession],
+  );
+
   return {
     session,
+    setSessionModel,
     messages,
     agentContent, // Subagent messages keyed by agentId (for Task tool)
     setAgentContent, // Setter for merging lazy-loaded agent content

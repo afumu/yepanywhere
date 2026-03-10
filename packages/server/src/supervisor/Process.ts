@@ -476,6 +476,10 @@ export class Process {
     );
 
     await this.setModelFn(model);
+    // Update resolved model so subsequent API responses reflect the switch
+    if (model) {
+      this._resolvedModel = model;
+    }
     return true;
   }
 

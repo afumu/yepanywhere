@@ -5,6 +5,7 @@ import { api } from "../api/client";
 import { MessageInput, type UploadProgress } from "../components/MessageInput";
 import { MessageInputToolbar } from "../components/MessageInputToolbar";
 import { MessageList } from "../components/MessageList";
+import { ModelSwitchModal } from "../components/ModelSwitchModal";
 import { ProcessInfoModal } from "../components/ProcessInfoModal";
 import { ProviderBadge } from "../components/ProviderBadge";
 import { QuestionAnswerPanel } from "../components/QuestionAnswerPanel";
@@ -135,6 +136,7 @@ function SessionPageContent({
     updatePendingMessage,
     deferredMessages,
     slashCommands,
+    setSessionModel,
     sessionTools,
     mcpServers,
     pagination,
@@ -187,7 +189,15 @@ function SessionPageContent({
   // Connection for uploads (uses WebSocket when enabled)
   const connection = useConnection();
 
-  const allSlashCommands = slashCommands;
+  // Inject custom client-side commands alongside SDK-discovered ones
+  const allSlashCommands = useMemo(() => {
+    if (status.owner === "self") {
+      return slashCommands.includes("model")
+        ? slashCommands
+        : ["model", ...slashCommands];
+    }
+    return slashCommands;
+  }, [slashCommands, status.owner]);
 
   // Get provider capabilities based on session's provider
   const { providers } = useProviders();
@@ -278,6 +288,9 @@ function SessionPageContent({
 
   // Process info modal state
   const [showProcessInfoModal, setShowProcessInfoModal] = useState(false);
+
+  // Model switch modal state
+  const [showModelSwitchModal, setShowModelSwitchModal] = useState(false);
 
   // Track user engagement to mark session as "seen"
   // Only enabled when not in external session (we own or it's idle)
@@ -471,6 +484,22 @@ function SessionPageContent({
       showToast(`Failed to queue message: ${errorMsg}`, "error");
     }
   };
+
+  const handleModelChanged = useCallback(
+    (model: string) => {
+      setSessionModel(model);
+      showToast(`Switched to ${model}`, "success");
+    },
+    [setSessionModel, showToast],
+  );
+
+  const handleCustomCommand = useCallback((command: string) => {
+    if (command === "model") {
+      setShowModelSwitchModal(true);
+      return true;
+    }
+    return false;
+  }, []);
 
   const handleAbort = async () => {
     if (status.owner === "self" && status.processId) {
@@ -1017,6 +1046,18 @@ function SessionPageContent({
           />
         )}
 
+        {/* Model Switch Modal */}
+        {showModelSwitchModal &&
+          status.owner === "self" &&
+          status.processId && (
+            <ModelSwitchModal
+              processId={status.processId}
+              currentModel={session?.model}
+              onModelChanged={handleModelChanged}
+              onClose={() => setShowModelSwitchModal(false)}
+            />
+          )}
+
         {status.owner === "external" && (
           <div className="external-session-warning">
             External session active - enter messages at your own risk!
@@ -1169,11 +1210,8 @@ function SessionPageContent({
                 onAttach={handleAttach}
                 onRemoveAttachment={handleRemoveAttachment}
                 uploadProgress={uploadProgress}
-                slashCommands={
-                  supportsSlashCommands && status.owner === "self"
-                    ? allSlashCommands
-                    : []
-                }
+                slashCommands={status.owner === "self" ? allSlashCommands : []}
+                onCustomCommand={handleCustomCommand}
               />
             )}
           </div>

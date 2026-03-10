@@ -73,6 +73,8 @@ interface Props {
   supportsThinkingToggle?: boolean;
   /** Available slash commands (without "/" prefix) */
   slashCommands?: string[];
+  /** Callback for custom client-side commands (e.g., "model"). Return true if handled. */
+  onCustomCommand?: (command: string) => boolean;
 }
 
 export function MessageInput({
@@ -100,6 +102,7 @@ export function MessageInput({
   supportsPermissionMode = true,
   supportsThinkingToggle = true,
   slashCommands = [],
+  onCustomCommand,
 }: Props) {
   const [text, setText, controls] = useDraftPersistence(draftKey);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
@@ -295,6 +298,11 @@ export function MessageInput({
   // Handle slash command selection - insert command into text
   const handleSlashCommand = useCallback(
     (command: string) => {
+      // Check if this is a custom client-side command (strip leading "/")
+      const bare = command.startsWith("/") ? command.slice(1) : command;
+      if (onCustomCommand?.(bare)) {
+        return; // Custom command handled, don't insert text
+      }
       // If text is empty or ends with whitespace, just append the command
       // Otherwise, add a space before it
       const trimmed = text.trimEnd();
@@ -306,7 +314,7 @@ export function MessageInput({
       // Focus the textarea so user can continue typing
       textareaRef.current?.focus();
     },
-    [text, setText],
+    [text, setText, onCustomCommand],
   );
 
   return (

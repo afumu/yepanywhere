@@ -1314,6 +1314,78 @@ details[open] .collapsible__icon {
 }
 
 /* ==========================================================================
+   Model Switch Modal
+   ========================================================================== */
+
+.model-switch-content {
+  padding: 0.5rem;
+  max-width: 400px;
+}
+
+.model-switch-loading,
+.model-switch-error {
+  font-size: var(--font-size-sm);
+  color: var(--text-muted);
+  padding: 1rem;
+  text-align: center;
+}
+
+.model-switch-error {
+  color: var(--error-color);
+}
+
+.model-switch-list {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.model-switch-item {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.75rem 1rem;
+  background: transparent;
+  border: none;
+  border-radius: 0.375rem;
+  cursor: pointer;
+  text-align: left;
+  width: 100%;
+  color: var(--text-primary);
+  font-size: var(--font-size-sm);
+}
+
+.model-switch-item:hover {
+  background: var(--bg-hover);
+}
+
+.model-switch-item.current {
+  background: var(--bg-hover);
+}
+
+.model-switch-item:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.model-switch-name {
+  font-weight: 500;
+}
+
+.model-switch-description {
+  color: var(--text-secondary);
+  font-size: var(--font-size-xs);
+  flex: 1;
+}
+
+.model-switch-badge {
+  font-size: var(--font-size-xs);
+  color: var(--accent-color);
+  font-weight: 600;
+  flex-shrink: 0;
+}
+
+/* ==========================================================================
    Badges
    ========================================================================== */
 

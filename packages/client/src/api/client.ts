@@ -522,6 +522,17 @@ export const api = {
       { method: "POST" },
     ),
 
+  getProcessModels: (processId: string) =>
+    fetchJSON<{
+      models: Array<{ id: string; name: string; description?: string }>;
+    }>(`/processes/${processId}/models`),
+
+  setProcessModel: (processId: string, model?: string) =>
+    fetchJSON<{ success: boolean; model?: string }>(
+      `/processes/${processId}/model`,
+      { method: "POST", body: JSON.stringify({ model }) },
+    ),
+
   respondToInput: (
     sessionId: string,
     requestId: string,
