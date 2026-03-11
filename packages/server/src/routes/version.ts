@@ -45,14 +45,20 @@ function getCurrentVersion(): string {
   }
 }
 
-// Cache for npm registry check (5 minute TTL)
+const UPDATE_SERVER_URL = "https://updates.yepanywhere.com/version";
+
+// Cache for update server check (5 minute TTL)
 let cachedLatestVersion: { version: string; timestamp: number } | null = null;
 const CACHE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 
 /**
- * Fetch the latest version from npm registry
+ * Fetch the latest version from the update server.
+ * Sends current version and install ID for analytics.
  */
-async function getLatestNpmVersion(): Promise<string | null> {
+async function getLatestVersion(
+  currentVersion: string,
+  installId?: string,
+): Promise<string | null> {
   // Return cached value if fresh
   if (
     cachedLatestVersion &&
@@ -63,19 +69,27 @@ async function getLatestNpmVersion(): Promise<string | null> {
 
   try {
     const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), 5000); // 5s timeout
+    const timeoutId = setTimeout(() => controller.abort(), 5000);
 
-    const response = await fetch(
-      "https://registry.npmjs.org/yepanywhere/latest",
-      {
-        signal: controller.signal,
-        headers: {
-          Accept: "application/json",
-        },
-      },
-    );
+    const headers: Record<string, string> = {
+      Accept: "application/json",
+    };
+    if (installId) {
+      headers["X-CFU-ID"] = installId;
+    }
+
+    const response = await fetch(`${UPDATE_SERVER_URL}/${currentVersion}`, {
+      signal: controller.signal,
+      headers,
+    });
 
     clearTimeout(timeoutId);
+
+    // 204 = no update available (current version is latest)
+    if (response.status === 204) {
+      cachedLatestVersion = { version: currentVersion, timestamp: Date.now() };
+      return currentVersion;
+    }
 
     if (!response.ok) {
       return null;
@@ -149,6 +163,8 @@ export interface VersionRouteOptions {
   getDeviceBridgeState?: () => DeviceBridgeState;
   /** Whether the user has opted into the device bridge feature. */
   isDeviceBridgeEnabled?: () => boolean;
+  /** Unique installation ID for update analytics. */
+  installId?: string;
 }
 
 export interface ServerCompatibilityInfo {
@@ -193,11 +209,11 @@ export function createVersionRoutes(options?: VersionRouteOptions): Hono {
   routes.get("/", async (c) => {
     const compatibility = getServerCompatibilityInfo(options);
     const current = compatibility.appVersion;
-    const latest = await getLatestNpmVersion();
 
     // For dev versions like "v0.1.7-3-g050bfd2", extract base version "v0.1.7"
-    // to compare against npm. This tells devs if they're behind the latest release.
+    // to compare against the update server.
     const baseVersion = current.split("-")[0] || current;
+    const latest = await getLatestVersion(baseVersion, options?.installId);
     const updateAvailable = latest
       ? isNewerVersion(baseVersion, latest)
       : false;

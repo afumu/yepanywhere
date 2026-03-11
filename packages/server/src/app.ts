@@ -405,6 +405,7 @@ export function createApp(options: AppOptions): AppResult {
       isDeviceBridgeEnabled: () =>
         options.serverSettingsService?.getSetting("deviceBridgeEnabled") ??
         false,
+      installId: options.installId,
     }),
   );
 
