@@ -10,6 +10,8 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ### Changed
 - Update remote device control post to cover iOS Simulator support alongside Android
+- Replace device list screenshot to show iOS Simulators section
+- Add iOS Simulator stream screenshot
 
 ## [site-v1.5.21] - 2026-03-13
 
