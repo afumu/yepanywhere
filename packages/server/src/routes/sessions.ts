@@ -244,6 +244,33 @@ function computeSDKCompactionOverhead(sdkMessages: SDKMessage[]): number {
 }
 
 /**
+ * Extract context window size from SDK result messages' modelUsage field.
+ * The SDK reports per-model usage including contextWindow in result messages.
+ * Returns undefined if not found.
+ */
+function extractContextWindowFromModelUsage(
+  sdkMessages: SDKMessage[],
+  model: string | undefined,
+): number | undefined {
+  if (!model) return undefined;
+  // Scan backwards to find the most recent result message with modelUsage
+  for (let i = sdkMessages.length - 1; i >= 0; i--) {
+    const msg = sdkMessages[i];
+    if (msg?.type === "result" && msg.modelUsage) {
+      const modelUsage = msg.modelUsage as Record<
+        string,
+        { contextWindow?: number }
+      >;
+      const usage = modelUsage[model];
+      if (usage?.contextWindow && usage.contextWindow > 0) {
+        return usage.contextWindow;
+      }
+    }
+  }
+  return undefined;
+}
+
+/**
  * Extract context usage from SDK messages.
  * Finds the last assistant message with usage data.
  *
@@ -260,9 +287,16 @@ function extractContextUsageFromSDKMessages(
     provider?: ProviderName,
   ) => number,
 ): ContextUsage | undefined {
-  const contextWindowSize = resolveContextWindow
-    ? resolveContextWindow(model, provider)
-    : getModelContextWindow(model, provider);
+  // Prefer context window reported by SDK in modelUsage (accurate, model-specific)
+  const sdkContextWindow = extractContextWindowFromModelUsage(
+    sdkMessages,
+    model,
+  );
+  const contextWindowSize =
+    sdkContextWindow ??
+    (resolveContextWindow
+      ? resolveContextWindow(model, provider)
+      : getModelContextWindow(model, provider));
 
   const isCodexProvider = provider === "codex" || provider === "codex-oss";
 
@@ -642,6 +676,18 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
           process.provider,
           mis ? (m, p) => mis.getContextWindow(m, p) : undefined,
         );
+        // Cache SDK-reported context window for future JSONL reads
+        if (
+          mis &&
+          contextUsage?.contextWindow &&
+          process.resolvedModel
+        ) {
+          mis.recordContextWindow(
+            process.resolvedModel,
+            contextUsage.contextWindow,
+            process.provider,
+          );
+        }
         // Get metadata even for new sessions (in case it was set before file was written)
         const metadata = deps.sessionMetadataService?.getMetadata(sessionId);
         // Get notification data for new sessions too
