@@ -11,12 +11,15 @@ describe("NotificationService", () => {
   let service: NotificationService;
 
   beforeEach(async () => {
+    // Freeze time before the test timestamps so max(provided, now) returns provided
+    vi.useFakeTimers({ now: new Date("2024-01-01T00:00:00Z") });
     testDir = join(tmpdir(), `claude-notifications-test-${randomUUID()}`);
     await mkdir(testDir, { recursive: true });
     service = new NotificationService({ dataDir: testDir });
   });
 
   afterEach(async () => {
+    vi.useRealTimers();
     await rm(testDir, { recursive: true, force: true });
   });
 

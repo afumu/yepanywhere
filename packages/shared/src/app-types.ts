@@ -39,7 +39,7 @@ export interface AppContentBlock {
   input?: unknown;
   // tool_result block
   tool_use_id?: string;
-  content?: string;
+  content?: string | AppContentBlock[];
   is_error?: boolean;
   // Allow any additional fields
   [key: string]: unknown;
