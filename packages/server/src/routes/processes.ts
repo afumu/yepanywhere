@@ -14,6 +14,10 @@ export interface ProcessesDeps {
   supervisor: Supervisor;
   scanner: ProjectScanner;
   readerFactory: (project: Project) => ISessionReader;
+  processSessionSourceFactory?: (
+    process: ProcessInfo,
+    project: Project,
+  ) => { reader: ISessionReader; sessionDir: string };
   sessionIndexService?: SessionIndexService;
   sessionMetadataService?: SessionMetadataService;
 }
@@ -32,7 +36,9 @@ async function enrichProcessInfo(
     );
     if (!project) return process;
 
-    const reader = deps.readerFactory(project);
+    const sessionSource = deps.processSessionSourceFactory?.(process, project);
+    const reader = sessionSource?.reader ?? deps.readerFactory(project);
+    const sessionDir = sessionSource?.sessionDir ?? project.sessionDir;
 
     // Always get the session summary for model and contextUsage
     const summary = await reader.getSessionSummary(
@@ -46,7 +52,7 @@ async function enrichProcessInfo(
     let title = summary?.title ?? null;
     if (deps.sessionIndexService) {
       const cachedTitle = await deps.sessionIndexService.getSessionTitle(
-        project.sessionDir,
+        sessionDir,
         process.projectId as UrlProjectId,
         process.sessionId,
         reader,

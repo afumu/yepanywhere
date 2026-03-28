@@ -532,6 +532,27 @@ export function createApp(options: AppOptions): AppResult {
       supervisor,
       scanner,
       readerFactory,
+      processSessionSourceFactory: (process, project) => {
+        switch (process.provider) {
+          case "codex":
+          case "codex-oss":
+            return {
+              reader: codexReaderFactory(project.path),
+              sessionDir: CODEX_SESSIONS_DIR,
+            };
+          case "gemini":
+          case "gemini-acp":
+            return {
+              reader: geminiReaderFactory(project.path),
+              sessionDir: GEMINI_TMP_DIR,
+            };
+          default:
+            return {
+              reader: readerFactory(project),
+              sessionDir: project.sessionDir,
+            };
+        }
+      },
       sessionIndexService: options.sessionIndexService,
     }),
   );

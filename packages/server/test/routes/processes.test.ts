@@ -102,4 +102,59 @@ describe("Processes Routes", () => {
     );
     expect(getSessionSummary).toHaveBeenCalledWith("sess-1", "proj-1");
   });
+
+  it("uses the process provider session source for mixed-provider projects", async () => {
+    const project = {
+      ...createProject(),
+      provider: "claude",
+      sessionDir: "/tmp/project/.claude-sessions",
+    } satisfies Project;
+    const process = createProcessInfo();
+    const summary = createSummary();
+
+    const claudeReader = {
+      getSessionSummary: vi.fn(async () => null),
+    } as unknown as ISessionReader;
+    const codexReader = {
+      getSessionSummary: vi.fn(async () => summary),
+    } as unknown as ISessionReader;
+    const getSessionTitle = vi.fn(async () => summary.title);
+
+    const routes = createProcessesRoutes({
+      supervisor: {
+        getProcessInfoList: vi.fn(() => [process]),
+        getRecentlyTerminatedProcesses: vi.fn(() => []),
+      } as unknown as Supervisor,
+      scanner: {
+        getProject: vi.fn(async () => project),
+      } as unknown as ProjectScanner,
+      readerFactory: vi.fn(() => claudeReader),
+      processSessionSourceFactory: vi.fn(() => ({
+        reader: codexReader,
+        sessionDir: "/tmp/codex-sessions",
+      })),
+      sessionIndexService: {
+        getSessionTitle,
+      } as unknown as SessionIndexService,
+    });
+
+    const response = await routes.request("/");
+    expect(response.status).toBe(200);
+
+    const json = await response.json();
+    expect(json.processes).toHaveLength(1);
+    expect(json.processes[0]?.sessionTitle).toBe("Fix the agents page titles");
+
+    expect(vi.mocked(codexReader.getSessionSummary)).toHaveBeenCalledWith(
+      "sess-1",
+      "proj-1",
+    );
+    expect(getSessionTitle).toHaveBeenCalledWith(
+      "/tmp/codex-sessions",
+      "proj-1",
+      "sess-1",
+      codexReader,
+    );
+    expect(vi.mocked(claudeReader.getSessionSummary)).not.toHaveBeenCalled();
+  });
 });
