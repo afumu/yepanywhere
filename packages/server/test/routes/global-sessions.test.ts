@@ -9,6 +9,7 @@ import {
   type GlobalSessionsResponse,
   createGlobalSessionsRoutes,
 } from "../../src/routes/global-sessions.js";
+import type { GeminiSessionReader } from "../../src/sessions/gemini-reader.js";
 import type { ISessionReader } from "../../src/sessions/types.js";
 import type { ExternalSessionTracker } from "../../src/supervisor/ExternalSessionTracker.js";
 import type { Supervisor } from "../../src/supervisor/Supervisor.js";
@@ -584,6 +585,63 @@ describe("Global Sessions Routes", () => {
       ).toHaveBeenCalledWith("/codex/sessions", project.id, codexReader);
       expect(codexReader.listSessions).not.toHaveBeenCalled();
       expect(result.sessions.some((s) => s.id === "codex-sess-1")).toBe(true);
+    });
+
+    it("uses session index cache for gemini sessions merged into claude projects", async () => {
+      const project = createProject("proj1", "project-one", "/sessions/proj1");
+      vi.mocked(mockScanner.listProjects).mockResolvedValue([project]);
+      sessionsByDir.set("/sessions/proj1", []);
+
+      const geminiSession = createSession(
+        "gemini-sess-1",
+        "proj1",
+        minutesAgo(1),
+        {
+          provider: "gemini",
+        },
+      );
+      const geminiReader = {
+        listSessions: vi.fn(async () => [geminiSession]),
+      } as unknown as GeminiSessionReader;
+      const geminiReaderFactory = vi.fn(() => geminiReader);
+      const geminiScanner = {
+        listProjects: vi.fn(async () => [{ ...project, provider: "gemini" }]),
+        getHashToCwd: vi.fn(async () => new Map()),
+      };
+      const sessionIndexService = {
+        getSessionsWithCache: vi.fn(
+          async (
+            sessionDir: string,
+            _projectId: string,
+            reader: ISessionReader,
+          ) => {
+            if (sessionDir === "/gemini/tmp") {
+              expect(reader).toBe(geminiReader);
+              return [geminiSession];
+            }
+            return reader.listSessions(_projectId as UrlProjectId);
+          },
+        ),
+      } as unknown as SessionIndexService;
+
+      const routes = createGlobalSessionsRoutes({
+        ...getDeps({ sessionIndexService }),
+        geminiScanner:
+          geminiScanner as unknown as GlobalSessionsDeps["geminiScanner"],
+        geminiSessionsDir: "/gemini/tmp",
+        geminiReaderFactory:
+          geminiReaderFactory as unknown as GlobalSessionsDeps["geminiReaderFactory"],
+      });
+
+      const response = await routes.request("/");
+      expect(response.status).toBe(200);
+      const result = (await response.json()) as GlobalSessionsResponse;
+
+      expect(
+        vi.mocked(sessionIndexService.getSessionsWithCache),
+      ).toHaveBeenCalledWith("/gemini/tmp", project.id, geminiReader);
+      expect(geminiReader.listSessions).not.toHaveBeenCalled();
+      expect(result.sessions.some((s) => s.id === "gemini-sess-1")).toBe(true);
     });
   });
 

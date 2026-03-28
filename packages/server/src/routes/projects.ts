@@ -415,9 +415,14 @@ export function createProjectsRoutes(deps: ProjectsDeps): Hono {
             })
           : null);
       if (geminiReader) {
-        const geminiSessionSummaries = await geminiReader.listSessions(
-          project.id,
-        );
+        const geminiSessionSummaries =
+          deps.sessionIndexService && deps.geminiSessionsDir
+            ? await deps.sessionIndexService.getSessionsWithCache(
+                deps.geminiSessionsDir,
+                project.id,
+                geminiReader,
+              )
+            : await geminiReader.listSessions(project.id);
         sessions = [...sessions, ...geminiSessionSummaries];
       }
     }

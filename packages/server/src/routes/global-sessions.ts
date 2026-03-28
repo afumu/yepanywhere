@@ -240,9 +240,14 @@ export function createGlobalSessionsRoutes(deps: GlobalSessionsDeps): Hono {
             })
           : null);
       if (geminiReader) {
-        const geminiSessionSummaries = await geminiReader.listSessions(
-          project.id,
-        );
+        const geminiSessionSummaries =
+          deps.sessionIndexService && deps.geminiSessionsDir
+            ? await deps.sessionIndexService.getSessionsWithCache(
+                deps.geminiSessionsDir,
+                project.id,
+                geminiReader,
+              )
+            : await geminiReader.listSessions(project.id);
         // Merge Gemini sessions with Claude/Codex sessions
         sessions = [...sessions, ...geminiSessionSummaries];
       }
