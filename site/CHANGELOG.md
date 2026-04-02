@@ -6,6 +6,12 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.28] - 2026-04-02
+
+### Added
+- Local media preview modal for file paths in markdown
+- Prefer recent project for new sessions
+
 ## [site-v1.5.27] - 2026-03-29
 
 ### Added
