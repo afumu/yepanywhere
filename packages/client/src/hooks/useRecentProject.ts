@@ -5,6 +5,10 @@ import {
   setServerScoped,
 } from "../lib/storageKeys";
 
+interface ProjectLike {
+  id: string;
+}
+
 /**
  * Get the most recently visited project ID from localStorage.
  * Returns null if none has been set.
@@ -20,6 +24,35 @@ export function getRecentProjectId(): string | null {
 export function setRecentProjectId(projectId: string): void {
   if (typeof window === "undefined") return;
   setServerScoped("recentProject", projectId, LEGACY_KEYS.recentProject);
+}
+
+/**
+ * Resolve the best available project ID for starting a new session.
+ *
+ * Prefers the recent project stored in localStorage when it still exists in the
+ * current project list, then an optional caller-provided fallback, then the
+ * first available project.
+ */
+export function resolvePreferredProjectId<T extends ProjectLike>(
+  projects: readonly T[],
+  fallbackProjectId?: string | null,
+): string | null {
+  const recentProjectId = getRecentProjectId();
+  if (
+    recentProjectId &&
+    projects.some((project) => project.id === recentProjectId)
+  ) {
+    return recentProjectId;
+  }
+
+  if (
+    fallbackProjectId &&
+    projects.some((project) => project.id === fallbackProjectId)
+  ) {
+    return fallbackProjectId;
+  }
+
+  return projects[0]?.id ?? null;
 }
 
 /**

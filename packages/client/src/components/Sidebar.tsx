@@ -5,6 +5,7 @@ import { useOptionalRemoteConnection } from "../contexts/RemoteConnectionContext
 import { useDrafts } from "../hooks/useDrafts";
 import { useGlobalSessions } from "../hooks/useGlobalSessions";
 import { useNeedsAttentionBadge } from "../hooks/useNeedsAttentionBadge";
+import { resolvePreferredProjectId } from "../hooks/useRecentProject";
 import { useRecentProjects } from "../hooks/useRecentProjects";
 import { useRemoteBasePath } from "../hooks/useRemoteBasePath";
 import { useVersion } from "../hooks/useVersion";
@@ -89,7 +90,10 @@ export function Sidebar({
   // Global inbox count
   const inboxCount = useNeedsAttentionBadge();
   const { recentProjects, projects } = useRecentProjects();
-  const newSessionProject = recentProjects[0] ?? projects[0];
+  const newSessionProjectId = resolvePreferredProjectId(
+    projects,
+    recentProjects[0]?.id,
+  );
 
   const sidebarRef = useRef<HTMLElement>(null);
   const touchStartX = useRef<number | null>(null);
@@ -334,8 +338,8 @@ export function Sidebar({
           {/* New Session: link to most recent project's new session page */}
           <SidebarNavItem
             to={
-              newSessionProject
-                ? `/new-session?projectId=${encodeURIComponent(newSessionProject.id)}`
+              newSessionProjectId
+                ? `/new-session?projectId=${encodeURIComponent(newSessionProjectId)}`
                 : "/new-session"
             }
             icon={SidebarIcons.newSession}

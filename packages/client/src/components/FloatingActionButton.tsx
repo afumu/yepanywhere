@@ -10,7 +10,7 @@ import { useDraftPersistence } from "../hooks/useDraftPersistence";
 import { useFabVisibility } from "../hooks/useFabVisibility";
 import { useProjects } from "../hooks/useProjects";
 import {
-  getRecentProjectId,
+  resolvePreferredProjectId,
   setRecentProjectId,
 } from "../hooks/useRecentProject";
 import { useRemoteBasePath } from "../hooks/useRemoteBasePath";
@@ -95,9 +95,9 @@ export function FloatingActionButton() {
     const trimmed = message.trim();
     if (!trimmed) return;
 
-    // Get project to navigate to (prefer recent, fall back to any project)
+    // Get project to navigate to (prefer current project, then recent, then any)
     const targetProjectId =
-      projectIdFromUrl ?? getRecentProjectId() ?? projects[0]?.id;
+      projectIdFromUrl ?? resolvePreferredProjectId(projects);
     if (!targetProjectId) {
       // No project context - can't proceed
       return;
@@ -131,9 +131,9 @@ export function FloatingActionButton() {
   );
 
   const handleButtonClick = useCallback(() => {
-    // Check if we have a valid project target (prefer recent, fall back to any)
+    // Check if we have a valid project target (prefer current project, then recent, then any)
     const targetProjectId =
-      projectIdFromUrl ?? getRecentProjectId() ?? projects[0]?.id;
+      projectIdFromUrl ?? resolvePreferredProjectId(projects);
     if (!targetProjectId) {
       // No project context - navigate to projects page instead
       navigate(`${basePath}/projects`);

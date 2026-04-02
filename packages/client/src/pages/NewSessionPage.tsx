@@ -4,6 +4,7 @@ import { PageHeader } from "../components/PageHeader";
 import { ProjectSelector } from "../components/ProjectSelector";
 import { useDocumentTitle } from "../hooks/useDocumentTitle";
 import { useProject, useProjects } from "../hooks/useProjects";
+import { resolvePreferredProjectId } from "../hooks/useRecentProject";
 import { useI18n } from "../i18n";
 import { useNavigationLayout } from "../layouts";
 
@@ -17,14 +18,14 @@ export function NewSessionPage() {
   // Get all projects to find default if no projectId specified
   const { projects, loading: projectsLoading } = useProjects();
 
-  // Use the provided projectId, or default to first project
-  const effectiveProjectId = projectId || projects[0]?.id;
+  // Use the provided projectId, or the preferred recent project when available
+  const effectiveProjectId = projectId || resolvePreferredProjectId(projects);
 
   const {
     project,
     loading: projectLoading,
     error,
-  } = useProject(effectiveProjectId);
+  } = useProject(effectiveProjectId ?? undefined);
 
   // Update browser tab title (must be called unconditionally before any early returns)
   useDocumentTitle(project?.name, t("newSessionTitle"));
