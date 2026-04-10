@@ -67,6 +67,32 @@ describe("Settings Routes", () => {
   });
 
   describe("PUT /", () => {
+    it("accepts clearing globalInstructions with null", async () => {
+      settings = {
+        ...settings,
+        globalInstructions: "Existing instructions",
+      };
+
+      const routes = createSettingsRoutes({
+        serverSettingsService: mockServerSettingsService,
+      });
+
+      const response = await routes.request("/", {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          globalInstructions: null,
+        }),
+      });
+
+      expect(response.status).toBe(200);
+      const json = await response.json();
+      expect(json.settings.globalInstructions).toBeUndefined();
+      expect(mockServerSettingsService.updateSettings).toHaveBeenCalledWith({
+        globalInstructions: undefined,
+      });
+    });
+
     it("rejects invalid aliases in remoteExecutors setting", async () => {
       const routes = createSettingsRoutes({
         serverSettingsService: mockServerSettingsService,

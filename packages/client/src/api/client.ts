@@ -930,7 +930,12 @@ export const api = {
   updateServerSettings: (settings: Partial<ServerSettings>) =>
     fetchJSON<{ settings: ServerSettings }>("/settings", {
       method: "PUT",
-      body: JSON.stringify(settings),
+      body: JSON.stringify(
+        settings,
+        // Preserve explicit clears for optional settings. The server treats null
+        // and empty string as "clear this value", but plain JSON drops undefined keys.
+        (_key, value) => (value === undefined ? null : value),
+      ),
     }),
 
   // Remote executors API
