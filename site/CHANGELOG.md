@@ -6,6 +6,11 @@ The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.1.0/).
 
 ## [Unreleased]
 
+## [site-v1.5.31] - 2026-04-13
+
+### Fixed
+- Prefer persisted provider for session resume and agents
+
 ## [site-v1.5.30] - 2026-04-13
 
 ### Fixed

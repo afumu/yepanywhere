@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.4.26] - 2026-04-13
+
+### Fixed
+- Prefer persisted provider for session resume and agents
+
 ## [0.4.25] - 2026-04-13
 
 ### Added
