@@ -84,4 +84,93 @@ describe("Sessions metadata route", () => {
       project.id,
     );
   });
+
+  it("keeps persisted provider when metadata refresh misses the session summary", async () => {
+    const project = createProject();
+
+    const routes = createSessionsRoutes({
+      supervisor: {
+        getProcessForSession: vi.fn(() => ({
+          id: "proc-1",
+          permissionMode: "default",
+          modeVersion: 0,
+          state: { type: "idle", since: new Date("2026-03-10T09:47:00.000Z") },
+          provider: "claude",
+          supportsDynamicCommands: false,
+        })),
+      } as unknown as SessionsDeps["supervisor"],
+      scanner: {
+        getProject: vi.fn(async () => project),
+        getOrCreateProject: vi.fn(async () => project),
+      } as unknown as SessionsDeps["scanner"],
+      readerFactory: vi.fn(
+        () =>
+          ({
+            getSessionSummary: vi.fn(async () => null),
+          }) as unknown as ISessionReader,
+      ),
+      sessionMetadataService: {
+        getMetadata: vi.fn(() => undefined),
+        getProvider: vi.fn(() => "codex"),
+      } as unknown as NonNullable<SessionsDeps["sessionMetadataService"]>,
+    });
+
+    const response = await routes.request(
+      `/projects/${project.id}/sessions/sess-1/metadata`,
+    );
+    expect(response.status).toBe(200);
+
+    const json = await response.json();
+    expect(json.session.provider).toBe("codex");
+  });
+
+  it("prefers persisted provider over conflicting client resume provider", async () => {
+    const project = createProject();
+    const resumeSession = vi.fn(async () => ({
+      id: "proc-1",
+      sessionId: "sess-1",
+      permissionMode: "default",
+      modeVersion: 0,
+    }));
+
+    const routes = createSessionsRoutes({
+      supervisor: {
+        resumeSession,
+      } as unknown as SessionsDeps["supervisor"],
+      scanner: {
+        getOrCreateProject: vi.fn(async () => project),
+      } as unknown as SessionsDeps["scanner"],
+      readerFactory: vi.fn(
+        () =>
+          ({
+            getSessionSummary: vi.fn(async () => null),
+          }) as unknown as ISessionReader,
+      ),
+      sessionMetadataService: {
+        getProvider: vi.fn(() => "codex"),
+        getExecutor: vi.fn(() => undefined),
+      } as unknown as NonNullable<SessionsDeps["sessionMetadataService"]>,
+    });
+
+    const response = await routes.request(
+      `/projects/${project.id}/sessions/sess-1/resume`,
+      {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          message: "continue",
+          provider: "claude",
+        }),
+      },
+    );
+
+    expect(response.status).toBe(200);
+    expect(resumeSession).toHaveBeenCalledWith(
+      "sess-1",
+      project.path,
+      expect.objectContaining({ text: "continue" }),
+      undefined,
+      expect.objectContaining({ providerName: "codex" }),
+    );
+  });
 });

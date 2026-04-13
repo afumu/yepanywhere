@@ -470,7 +470,7 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         geminiReaderFactory: deps.geminiReaderFactory,
         geminiHashToCwd: deps.geminiScanner?.getHashToCwd(),
       },
-      process?.provider ?? metadataProvider,
+      metadataProvider ?? process?.provider,
     );
     const sessionSummary = sessionSummaryResult?.summary ?? null;
 
@@ -496,7 +496,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
         createdAt: sessionSummary?.createdAt ?? new Date().toISOString(),
         updatedAt: sessionSummary?.updatedAt ?? new Date().toISOString(),
         messageCount: sessionSummary?.messageCount ?? 0,
-        provider: sessionSummary?.provider ?? project.provider,
+        provider:
+          sessionSummary?.provider ??
+          metadataProvider ??
+          process?.provider ??
+          project.provider,
         model: sessionSummary?.model,
         originator: sessionSummary?.originator,
         cliVersion: sessionSummary?.cliVersion,
@@ -1075,12 +1079,11 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
     // Look up the session's original provider so we resume with the correct one
     // (e.g., claude-ollama sessions need the Ollama provider, not default Claude).
     // Check metadata first (explicitly saved on creation), then fall back to reader.
-    let providerName = body.provider;
-    if (!providerName) {
-      providerName = deps.sessionMetadataService?.getProvider(sessionId) as
-        | ProviderName
-        | undefined;
-    }
+    const metadataProvider = deps.sessionMetadataService?.getProvider(
+      sessionId,
+    ) as ProviderName | undefined;
+
+    let providerName = metadataProvider ?? body.provider;
     if (!providerName) {
       const sessionSummaryResult = await findSessionSummaryAcrossProviders(
         project,
@@ -1094,12 +1097,14 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
           geminiReaderFactory: deps.geminiReaderFactory,
           geminiHashToCwd: deps.geminiScanner?.getHashToCwd(),
         },
-        deps.sessionMetadataService?.getProvider(sessionId) as
-          | ProviderName
-          | undefined,
+        metadataProvider ?? body.provider,
       );
       const sessionSummary = sessionSummaryResult?.summary ?? null;
-      providerName = sessionSummary?.provider ?? project.provider;
+      providerName =
+        sessionSummary?.provider ??
+        metadataProvider ??
+        body.provider ??
+        project.provider;
     }
 
     const result = await deps.supervisor.resumeSession(

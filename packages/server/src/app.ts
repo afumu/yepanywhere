@@ -562,7 +562,12 @@ export function createApp(options: AppOptions): AppResult {
       scanner,
       readerFactory,
       processSessionSourceFactory: (process, project) => {
-        switch (process.provider) {
+        const persistedProvider = options.sessionMetadataService?.getProvider(
+          process.sessionId,
+        );
+        const provider = persistedProvider ?? process.provider;
+
+        switch (provider) {
           case "codex":
           case "codex-oss":
             return {

@@ -157,4 +157,52 @@ describe("Processes Routes", () => {
     );
     expect(vi.mocked(claudeReader.getSessionSummary)).not.toHaveBeenCalled();
   });
+
+  it("prefers persisted session provider over stale process provider for display", async () => {
+    const project = {
+      ...createProject(),
+      provider: "claude",
+      sessionDir: "/tmp/project/.claude-sessions",
+    } satisfies Project;
+    const process = {
+      ...createProcessInfo(),
+      provider: "claude",
+    } satisfies ProcessInfo;
+    const summary = createSummary();
+
+    const codexReader = {
+      getSessionSummary: vi.fn(async () => summary),
+    } as unknown as ISessionReader;
+
+    const routes = createProcessesRoutes({
+      supervisor: {
+        getProcessInfoList: vi.fn(() => [process]),
+        getRecentlyTerminatedProcesses: vi.fn(() => []),
+      } as unknown as Supervisor,
+      scanner: {
+        getProject: vi.fn(async () => project),
+      } as unknown as ProjectScanner,
+      readerFactory: vi.fn(
+        () =>
+          ({
+            getSessionSummary: vi.fn(async () => null),
+          }) as unknown as ISessionReader,
+      ),
+      processSessionSourceFactory: vi.fn(() => ({
+        reader: codexReader,
+        sessionDir: "/tmp/codex-sessions",
+      })),
+      sessionMetadataService: {
+        getMetadata: vi.fn(() => ({ provider: "codex" })),
+      } as unknown as SessionMetadataService,
+    });
+
+    const response = await routes.request("/");
+    expect(response.status).toBe(200);
+
+    const json = await response.json();
+    expect(json.processes).toHaveLength(1);
+    expect(json.processes[0]?.sessionTitle).toBe("Fix the agents page titles");
+    expect(json.processes[0]?.provider).toBe("codex");
+  });
 });

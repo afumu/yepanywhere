@@ -60,7 +60,9 @@ async function enrichProcessInfo(
       title = cachedTitle ?? title;
     }
 
-    // Get custom title from metadata service if available
+    // Get custom title and provider from persisted metadata if available.
+    // This lets the agents view recover when a stale in-memory process
+    // provider disagrees with the durable session provider.
     const metadata = deps.sessionMetadataService?.getMetadata(
       process.sessionId,
     );
@@ -82,6 +84,12 @@ async function enrichProcessInfo(
     if (summary?.model) {
       enriched.model = summary.model;
     }
+
+    // Prefer the durable session provider over the process provider when available.
+    // This fixes stale terminated-process rows that were started with the wrong
+    // provider but whose session metadata and on-disk transcript are correct.
+    enriched.provider =
+      summary?.provider ?? metadata?.provider ?? process.provider;
 
     // Add context usage if available
     if (summary?.contextUsage) {
