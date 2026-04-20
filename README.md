@@ -62,14 +62,8 @@ No database, no cloud, no accounts. 100% open source (MIT).
 
 ## Getting Started
 
-If you can install Claude Code or Codex, you can install this. Minimal dependencies.
+If you can install Claude Code or Codex, you can run Yep Anywhere locally with minimal dependencies.
 
-```
-npm i -g yepanywhere
-yepanywhere
-```
-
-Or, from source:
 ```bash
 git clone https://github.com/kzahel/yepanywhere.git
 cd yepanywhere
@@ -79,6 +73,13 @@ pnpm start
 ```
 
 Open http://localhost:3400 in your browser. The app auto-detects installed CLI agents.
+
+Prefer to use the published package instead? That's still available:
+
+```bash
+npm i -g yepanywhere
+yepanywhere
+```
 
 ## Remote Access
 
