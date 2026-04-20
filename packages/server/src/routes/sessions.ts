@@ -817,12 +817,17 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
       return c.json({ error: executorError }, 400);
     }
 
+    const newSessionDefaults =
+      deps.serverSettingsService?.getSetting("newSessionDefaults");
+    const effectiveMode = body.mode ?? newSessionDefaults?.permissionMode;
+    const providerName = body.provider ?? newSessionDefaults?.provider;
+
     const userMessage: UserMessage = {
       text: body.message,
       images: body.images,
       documents: body.documents,
       attachments: body.attachments,
-      mode: body.mode,
+      mode: effectiveMode,
       tempId: body.tempId,
     };
 
@@ -833,13 +838,19 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
 
     // Convert model option (undefined or "default" means use CLI default)
     const model =
-      body.model && body.model !== "default" ? body.model : undefined;
+      body.model && body.model !== "default"
+        ? body.model
+        : newSessionDefaults?.model && newSessionDefaults.model !== "default"
+          ? newSessionDefaults.model
+          : undefined;
 
     // Debug: log what we received
     console.log("[startSession] Request body:", {
       provider: body.provider,
+      effectiveProvider: providerName,
       executor,
       model: body.model,
+      effectiveModel: model,
     });
 
     const globalInstructions =
@@ -848,12 +859,12 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
     const result = await deps.supervisor.startSession(
       project.path,
       userMessage,
-      body.mode,
+      effectiveMode,
       {
         model,
         thinking,
         effort,
-        providerName: body.provider,
+        providerName,
         executor,
         globalInstructions,
         permissions: body.permissions,
@@ -875,10 +886,10 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
 
     // Save provider and executor to session metadata for resume
     if (deps.sessionMetadataService) {
-      if (body.provider) {
+      if (providerName) {
         await deps.sessionMetadataService.setProvider(
           result.sessionId,
-          body.provider,
+          providerName,
         );
       }
       if (executor) {
@@ -932,21 +943,30 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
       ? thinkingOptionToConfig(body.thinking)
       : { thinking: undefined, effort: undefined };
 
+    const newSessionDefaults =
+      deps.serverSettingsService?.getSetting("newSessionDefaults");
+    const effectiveMode = body.mode ?? newSessionDefaults?.permissionMode;
+    const providerName = body.provider ?? newSessionDefaults?.provider;
+
     // Convert model option (undefined or "default" means use CLI default)
     const model =
-      body.model && body.model !== "default" ? body.model : undefined;
+      body.model && body.model !== "default"
+        ? body.model
+        : newSessionDefaults?.model && newSessionDefaults.model !== "default"
+          ? newSessionDefaults.model
+          : undefined;
 
     const globalInstructions =
       deps.serverSettingsService?.getSetting("globalInstructions") || undefined;
 
     const result = await deps.supervisor.createSession(
       project.path,
-      body.mode,
+      effectiveMode,
       {
         model,
         thinking,
         effort,
-        providerName: body.provider,
+        providerName,
         executor,
         globalInstructions,
         permissions: body.permissions,
@@ -968,10 +988,10 @@ export function createSessionsRoutes(deps: SessionsDeps): Hono {
 
     // Save provider and executor to session metadata for resume
     if (deps.sessionMetadataService) {
-      if (body.provider) {
+      if (providerName) {
         await deps.sessionMetadataService.setProvider(
           result.sessionId,
-          body.provider,
+          providerName,
         );
       }
       if (executor) {

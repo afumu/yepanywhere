@@ -56,6 +56,7 @@ import type {
   AuthStatus,
   StartSessionOptions,
 } from "./types.js";
+import { filterEnvForChildProcess } from "./env-filter.js";
 
 const log = getLogger().child({ component: "codex-provider" });
 const execAsync = promisify(exec);
@@ -128,6 +129,7 @@ const DECLARE_CODEX_ORIGINATOR = true;
 const DECLARED_CODEX_ORIGINATOR = "Codex Desktop";
 
 const PREFERRED_MODEL_ORDER = [
+  "gpt-5.4",
   "gpt-5.3-codex",
   "gpt-5.2-codex",
   "gpt-5.1-codex-max",
@@ -136,6 +138,7 @@ const PREFERRED_MODEL_ORDER = [
 ] as const;
 
 const FALLBACK_CODEX_MODELS: ModelInfo[] = [
+  { id: "gpt-5.4", name: "GPT-5.4" },
   { id: "gpt-5.3-codex", name: "GPT-5.3-Codex" },
   { id: "gpt-5.2-codex", name: "GPT-5.2-Codex" },
   { id: "gpt-5.1-codex-max", name: "GPT-5.1-Codex-Max" },
@@ -672,7 +675,16 @@ export class CodexProvider implements AgentProvider {
    * Build environment overrides for Codex subprocesses.
    */
   private getCodexEnv(): NodeJS.ProcessEnv {
-    const env: NodeJS.ProcessEnv = { ...process.env };
+    const env: NodeJS.ProcessEnv = {
+      ...filterEnvForChildProcess(process.env),
+    };
+
+    // Prevent the parent Codex/Codex Desktop session from leaking its own
+    // thread-scoped runtime context into the app-server child process.
+    delete env.CODEX_THREAD_ID;
+    delete env.CODEX_CI;
+    delete env.CODEX_SHELL;
+
     if (this.config.baseUrl) {
       env.OPENAI_BASE_URL = this.config.baseUrl;
     }
