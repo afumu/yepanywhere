@@ -49,9 +49,27 @@ export interface ServerSettings {
 export const DEFAULT_SERVER_SETTINGS: ServerSettings = {
   serviceWorkerEnabled: true,
   persistRemoteSessionsToDisk: false,
+  newSessionDefaults: {
+    provider: "codex",
+    model: "gpt-5.4",
+    permissionMode: "bypassPermissions",
+  },
   lifecycleWebhooksEnabled: false,
   lifecycleWebhookDryRun: true,
 };
+
+function mergeWithDefaultSettings(
+  settings?: Partial<ServerSettings>,
+): ServerSettings {
+  return {
+    ...DEFAULT_SERVER_SETTINGS,
+    ...settings,
+    newSessionDefaults: {
+      ...DEFAULT_SERVER_SETTINGS.newSessionDefaults,
+      ...settings?.newSessionDefaults,
+    },
+  };
+}
 
 /** Stored state with version for migrations */
 interface SettingsState {
@@ -76,7 +94,7 @@ export class ServerSettingsService {
     this.filePath = path.join(this.dataDir, "server-settings.json");
     this.state = {
       version: CURRENT_VERSION,
-      settings: DEFAULT_SERVER_SETTINGS,
+      settings: mergeWithDefaultSettings(),
     };
   }
 
@@ -96,13 +114,13 @@ export class ServerSettingsService {
         // Merge with defaults in case new settings were added
         this.state = {
           version: CURRENT_VERSION,
-          settings: { ...DEFAULT_SERVER_SETTINGS, ...parsed.settings },
+          settings: mergeWithDefaultSettings(parsed.settings),
         };
       } else {
         // Future: handle migrations
         this.state = {
           version: CURRENT_VERSION,
-          settings: { ...DEFAULT_SERVER_SETTINGS, ...parsed.settings },
+          settings: mergeWithDefaultSettings(parsed.settings),
         };
         await this.save();
       }
@@ -115,7 +133,7 @@ export class ServerSettingsService {
       }
       this.state = {
         version: CURRENT_VERSION,
-        settings: DEFAULT_SERVER_SETTINGS,
+        settings: mergeWithDefaultSettings(),
       };
     }
 
